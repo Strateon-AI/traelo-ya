@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Calculator, Info } from "lucide-react";
-import type { ClientType, ProductSuggestion, QuoteConfig, QuoteMode } from "@/lib/types";
-import { calculateByProduct, calculateByWeight, formatUsd } from "@/lib/calculator";
-import { productQuoteUrl, weightQuoteUrl } from "@/lib/whatsapp";
+import type { ClientType, ProductSuggestion, QuoteConfig } from "@/lib/types";
+import { calculateQuote, formatUsd } from "@/lib/calculator";
+import { quoteUrl } from "@/lib/whatsapp";
 import { WhatsAppGlyph } from "./icons";
 import { BusinessQuoteCard } from "./BusinessQuoteCard";
 
@@ -27,37 +27,30 @@ export function QuoteCalculator({
   config: QuoteConfig;
   products: ProductSuggestion[];
 }) {
-  const [mode, setMode] = useState<QuoteMode>("product");
   const [clientType, setClientType] = useState<ClientType>("card");
   const [productName, setProductName] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [productPrice, setProductPrice] = useState<number | "">("");
-  const [productWeightKg, setProductWeightKg] = useState<number | "">("");
   const [weightKg, setWeightKg] = useState<number | "">("");
   const [agreed, setAgreed] = useState(false);
 
   // Si cambia cualquier dato del cálculo, la confirmación previa queda vieja.
   // (patrón de "ajustar estado durante el render" recomendado por React en
   // vez de un useEffect, para no disparar un setState síncrono en el efecto)
-  const quoteSignature = `${mode}|${clientType}|${productName}|${quantity}|${productPrice}|${productWeightKg}|${weightKg}`;
+  const quoteSignature = `${clientType}|${productName}|${quantity}|${productPrice}|${weightKg}`;
   const [lastSignature, setLastSignature] = useState(quoteSignature);
   if (quoteSignature !== lastSignature) {
     setLastSignature(quoteSignature);
     setAgreed(false);
   }
 
-  const productResult = calculateByProduct({
+  const result = calculateQuote({
     clientType,
-    weightKg: typeof productWeightKg === "number" ? productWeightKg : 0,
+    weightKg: typeof weightKg === "number" ? weightKg : 0,
     ratePerKg: config.weightRatePerKg,
     productPrice: typeof productPrice === "number" ? productPrice : 0,
     quantity,
     commissionPercent: config.commissionPercent,
-  });
-
-  const weightResult = calculateByWeight({
-    weightKg: typeof weightKg === "number" ? weightKg : 0,
-    ratePerKg: config.weightRatePerKg,
   });
 
   if (clientType === "business") {
@@ -72,146 +65,104 @@ export function QuoteCalculator({
     );
   }
 
-  const hasWhatsappData =
-    mode === "product"
-      ? productName.trim().length > 0 &&
-        quantity > 0 &&
-        typeof productWeightKg === "number" &&
-        productWeightKg > 0
-      : typeof weightKg === "number" && weightKg > 0;
+  const hasWeight = typeof weightKg === "number" && weightKg > 0;
+  const canSubmit = agreed && hasWeight;
 
-  const canSubmit = agreed && hasWhatsappData;
-
-  const whatsappHref =
-    mode === "product"
-      ? productQuoteUrl({
-          productName: productName.trim(),
-          quantity,
-          productPrice: typeof productPrice === "number" ? productPrice : 0,
-          clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
-          commissionCost: productResult.commissionCost,
-          weightKg: typeof productWeightKg === "number" ? productWeightKg : 0,
-          shippingCost: productResult.shippingCost,
-          total: productResult.total,
-          isCommissionApplied: productResult.commissionRate > 0,
-        })
-      : weightQuoteUrl({
-          weightKg: typeof weightKg === "number" ? weightKg : 0,
-          ratePerKg: config.weightRatePerKg,
-          total: weightResult.total,
-        });
+  const whatsappHref = quoteUrl({
+    productName: productName.trim(),
+    quantity,
+    productPrice: typeof productPrice === "number" ? productPrice : 0,
+    clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
+    commissionCost: result.commissionCost,
+    isCommissionApplied: result.commissionRate > 0,
+    weightKg: typeof weightKg === "number" ? weightKg : 0,
+    shippingCost: result.shippingCost,
+    total: result.total,
+  });
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-card-lg sm:p-7">
       <CalculatorHeader />
 
-      <div className="mt-5 grid grid-cols-2 gap-1 rounded-full bg-surface-100 p-1">
-        <TabButton active={mode === "product"} onClick={() => setMode("product")}>
-          Por producto
-        </TabButton>
-        <TabButton active={mode === "weight"} onClick={() => setMode("weight")}>
-          Por peso
-        </TabButton>
+      <div className="mt-5 space-y-4">
+        <Field label="¿Qué producto quieres traer? (opcional)">
+          <input
+            type="text"
+            list="producto-sugerencias"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="Ej. iPhone 16 Pro, zapatillas, consola de videojuegos..."
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+          <datalist id="producto-sugerencias">
+            {products.map((p) => (
+              <option key={p.id} value={p.name} />
+            ))}
+          </datalist>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cantidad">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
+            />
+          </Field>
+          <Field label="Precio (USD, opcional)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={productPrice}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setProductPrice(raw === "" ? "" : Math.max(0, Number(raw)));
+              }}
+              placeholder="0.00"
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+            />
+          </Field>
+        </div>
+        <p className="-mt-2 text-xs text-navy-500">
+          El producto y el precio son opcionales — solo se usan para calcular la comisión de
+          compra. El envío siempre se calcula por peso.
+        </p>
+
+        <ClientTypeSelector value={clientType} onChange={setClientType} />
+
+        <Field label="Peso estimado de todo el pedido (kg)">
+          <input
+            type="number"
+            min={0}
+            step="0.1"
+            value={weightKg}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setWeightKg(raw === "" ? "" : Math.max(0, Number(raw)));
+            }}
+            placeholder="0"
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+        </Field>
+
+        <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
+        <SummaryRow label="Costo de envío" value={formatUsd(result.shippingCost)} />
+        {result.commissionRate > 0 && (
+          <SummaryRow
+            label={`Servicio de compra (${result.commissionRate}%)`}
+            value={formatUsd(result.commissionCost)}
+            icon
+          />
+        )}
+        <SummaryRow label="Total estimado" value={formatUsd(result.total)} emphasis />
+        <p className="-mt-1 text-xs text-navy-500">
+          No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte.
+        </p>
       </div>
-
-      {mode === "product" ? (
-        <div className="mt-5 space-y-4">
-          <Field label="¿Qué producto quieres traer?">
-            <input
-              type="text"
-              list="producto-sugerencias"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              placeholder="Ej. iPhone 16 Pro, zapatillas, consola de videojuegos..."
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-            />
-            <datalist id="producto-sugerencias">
-              {products.map((p) => (
-                <option key={p.id} value={p.name} />
-              ))}
-            </datalist>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Cantidad">
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
-              />
-            </Field>
-            <Field label="Precio del producto (USD)">
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={productPrice}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  setProductPrice(raw === "" ? "" : Math.max(0, Number(raw)));
-                }}
-                placeholder="0.00"
-                className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-              />
-            </Field>
-          </div>
-
-          <ClientTypeSelector value={clientType} onChange={setClientType} />
-
-          <Field label="Peso estimado de todo el pedido (kg)">
-            <input
-              type="number"
-              min={0}
-              step="0.1"
-              value={productWeightKg}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setProductWeightKg(raw === "" ? "" : Math.max(0, Number(raw)));
-              }}
-              placeholder="0"
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-            />
-          </Field>
-
-          <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
-          <SummaryRow label="Costo de envío" value={formatUsd(productResult.shippingCost)} />
-          {productResult.commissionRate > 0 && (
-            <SummaryRow
-              label={`Servicio de compra (${productResult.commissionRate}%)`}
-              value={formatUsd(productResult.commissionCost)}
-              icon
-            />
-          )}
-          <SummaryRow label="Total estimado" value={formatUsd(productResult.total)} emphasis />
-          <p className="-mt-1 text-xs text-navy-500">
-            No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-5 space-y-4">
-          <ClientTypeSelector value={clientType} onChange={setClientType} />
-
-          <Field label="Peso estimado en kg">
-            <input
-              type="number"
-              min={0}
-              step="0.1"
-              value={weightKg}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setWeightKg(raw === "" ? "" : Math.max(0, Number(raw)));
-              }}
-              placeholder="0"
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-            />
-          </Field>
-          <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
-          <SummaryRow label="Total estimado" value={formatUsd(weightResult.total)} emphasis />
-        </div>
-      )}
 
       <div className="mt-5 flex gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
         <span className="text-amber-500">⚠️</span>
@@ -247,7 +198,7 @@ export function QuoteCalculator({
           type="button"
           disabled
           aria-disabled="true"
-          title="Completa los datos y marca la casilla para continuar"
+          title="Completa el peso estimado y marca la casilla para continuar"
           className="mt-4 flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-full bg-whatsapp-600/40 px-6 py-3.5 text-sm font-semibold text-white"
         >
           <WhatsAppGlyph className="h-4.5 w-4.5" />
@@ -272,28 +223,6 @@ function CalculatorHeader() {
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`focus-ring rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-        active ? "bg-brand-blue-600 text-white shadow-sm" : "text-navy-600 hover:text-navy-900"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function ClientTypeSelector({
   value,
   onChange,
@@ -302,7 +231,7 @@ function ClientTypeSelector({
   onChange: (value: ClientType) => void;
 }) {
   return (
-    <fieldset className="mt-5">
+    <fieldset>
       <legend className="mb-2 text-sm font-semibold text-navy-800">Tipo de cliente</legend>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         {CLIENT_TYPES.map((option) => {

@@ -19,33 +19,32 @@ export function customProductInquiryUrl(): string {
   );
 }
 
-export interface ProductQuoteMessageInput {
+export interface QuoteMessageInput {
   productName: string;
   quantity: number;
   productPrice: number;
   clientTypeLabel: string;
   commissionCost: number;
+  isCommissionApplied: boolean;
   weightKg: number;
   shippingCost: number;
   total: number;
-  isCommissionApplied: boolean;
 }
 
-export function buildProductQuoteMessage(input: ProductQuoteMessageInput): string {
-  const lines = [
-    "Hola Tráelo Ya 👋",
-    "Quiero solicitar una cotización.",
-    "",
-    `Producto: ${input.productName}`,
-    `Cantidad: ${input.quantity}`,
-    `Precio del producto: US$ ${input.productPrice.toFixed(2)}`,
-    `Modalidad: ${input.clientTypeLabel}`,
-  ];
+export function buildQuoteMessage(input: QuoteMessageInput): string {
+  const lines = ["Hola Tráelo Ya 👋", "Quiero solicitar una cotización.", ""];
 
+  if (input.productName.trim()) {
+    lines.push(`Producto: ${input.productName}`);
+    lines.push(`Cantidad: ${input.quantity}`);
+  }
+  if (input.productPrice > 0) {
+    lines.push(`Precio del producto: US$ ${input.productPrice.toFixed(2)}`);
+  }
+  lines.push(`Modalidad: ${input.clientTypeLabel}`);
   if (input.isCommissionApplied) {
     lines.push(`Comisión de compra: US$ ${input.commissionCost.toFixed(2)}`);
   }
-
   lines.push(`Peso estimado: ${input.weightKg} kg`);
   lines.push(`Envío estimado: US$ ${input.shippingCost.toFixed(2)}`);
   lines.push(`Total estimado: US$ ${input.total.toFixed(2)}`);
@@ -57,32 +56,8 @@ export function buildProductQuoteMessage(input: ProductQuoteMessageInput): strin
   return lines.join("\n");
 }
 
-export function productQuoteUrl(input: ProductQuoteMessageInput): string {
-  return buildWhatsappUrl(buildProductQuoteMessage(input));
-}
-
-export interface WeightQuoteMessageInput {
-  weightKg: number;
-  ratePerKg: number;
-  total: number;
-}
-
-export function buildWeightQuoteMessage(input: WeightQuoteMessageInput): string {
-  const lines = [
-    "Hola Tráelo Ya 👋",
-    "Quiero solicitar una cotización por peso.",
-    "",
-    `Peso estimado: ${input.weightKg} kg`,
-    `Tarifa referencial: US$ ${input.ratePerKg} por kg`,
-    `Total estimado: US$ ${input.total.toFixed(2)}`,
-    "",
-    "Entiendo que el peso y costo final se confirmarán una vez recibido el producto en almacén.",
-  ];
-  return lines.join("\n");
-}
-
-export function weightQuoteUrl(input: WeightQuoteMessageInput): string {
-  return buildWhatsappUrl(buildWeightQuoteMessage(input));
+export function quoteUrl(input: QuoteMessageInput): string {
+  return buildWhatsappUrl(buildQuoteMessage(input));
 }
 
 export interface BusinessQuoteMessageInput {

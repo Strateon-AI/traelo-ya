@@ -1,5 +1,4 @@
 export type ClientType = "card" | "buy-for-you" | "business";
-export type QuoteMode = "product" | "weight";
 
 /** Fila de la tabla quote_config (Supabase) — tarifas del cotizador. */
 export interface QuoteConfig {
