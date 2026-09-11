@@ -1,6 +1,5 @@
-import { ArrowRight, Headphones, ShieldCheck, ShoppingCart, Star, Truck as TruckIcon } from "lucide-react";
+import { ArrowRight, Headphones, ShieldCheck, ShoppingCart, Truck as TruckIcon } from "lucide-react";
 import { HeroBackground } from "./HeroBackground";
-import { BoxStack } from "./BoxStack";
 import { WhatsAppGlyph } from "./icons";
 import { WHATSAPP_DISPLAY_NUMBER, genericContactUrl } from "@/lib/whatsapp";
 import type { ProductSuggestion, QuoteConfig } from "@/lib/types";
@@ -59,31 +58,6 @@ export function Hero({ config, calculatorProducts }: { config: QuoteConfig; calc
             </a>
           </div>
 
-          <div className="mt-6 flex items-center gap-3">
-            <div className="flex -space-x-2.5">
-              {["JC", "MR", "LS", "AF"].map((initials) => (
-                <span
-                  key={initials}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-navy-100 text-[11px] font-semibold text-navy-700"
-                  style={{ backgroundColor: "#dbe8fe" }}
-                >
-                  {initials}
-                </span>
-              ))}
-            </div>
-            <div>
-              <div className="flex text-amber-400">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4" fill="currentColor" strokeWidth={0} />
-                ))}
-              </div>
-              <p className="text-sm font-medium text-navy-800/80">
-                +500 clientes satisfechos en Bolivia
-              </p>
-            </div>
-          </div>
-
-          <BoxStack className="mt-8 hidden sm:block lg:absolute lg:-bottom-6 lg:right-0 lg:mt-0" />
         </div>
 
         <div id="cotizador" className="relative lg:pt-2">
