@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
-import type { TiktokVideo } from "@/lib/types";
-import { deleteTiktokVideo, upsertTiktokVideo } from "@/app/admin/actions";
+import type { InstagramVideo } from "@/lib/types";
+import { deleteInstagramVideo, upsertInstagramVideo } from "@/app/admin/actions";
 import { Banner } from "./Banner";
 
-type DraftVideo = TiktokVideo & { isNew?: boolean };
+type DraftVideo = InstagramVideo & { isNew?: boolean };
 
-export function TiktokVideosManager({ initial }: { initial: TiktokVideo[] }) {
+export function InstagramVideosManager({ initial }: { initial: InstagramVideo[] }) {
   const [videos, setVideos] = useState<DraftVideo[]>(initial);
   const [banner, setBanner] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -33,13 +33,13 @@ export function TiktokVideosManager({ initial }: { initial: TiktokVideo[] }) {
   }
 
   async function save(video: DraftVideo) {
-    if (!video.videoUrl.includes("tiktok.com")) {
-      setBanner({ type: "error", text: "Pegá el link completo del video de TikTok." });
+    if (!video.videoUrl.includes("instagram.com")) {
+      setBanner({ type: "error", text: "Pegá el link completo de la publicación de Instagram." });
       return;
     }
     setSavingId(video.id);
     setBanner(null);
-    const result = await upsertTiktokVideo({
+    const result = await upsertInstagramVideo({
       id: video.isNew ? null : video.id,
       videoUrl: video.videoUrl,
       sortOrder: video.sortOrder,
@@ -60,7 +60,7 @@ export function TiktokVideosManager({ initial }: { initial: TiktokVideo[] }) {
       return;
     }
     setSavingId(video.id);
-    const result = await deleteTiktokVideo(video.id);
+    const result = await deleteInstagramVideo(video.id);
     setSavingId(null);
     if (result.error) {
       setBanner({ type: "error", text: result.error });
@@ -73,10 +73,10 @@ export function TiktokVideosManager({ initial }: { initial: TiktokVideo[] }) {
     <section className="rounded-3xl bg-white p-6 shadow-card sm:p-7">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-navy-900">Videos de TikTok</h2>
+          <h2 className="text-base font-bold text-navy-900">Videos de Instagram</h2>
           <p className="mt-1 text-sm text-navy-600">
-            Hasta 3 videos, se reproducen en la home. Pegá el link completo del video (ej.
-            https://www.tiktok.com/@usuario/video/1234567890123456789).
+            Hasta 3 videos, se reproducen en la home. Pegá el link completo de la publicación
+            (ej. https://www.instagram.com/reel/ABC123/ o https://www.instagram.com/p/ABC123/).
           </p>
         </div>
         <button
@@ -99,13 +99,13 @@ export function TiktokVideosManager({ initial }: { initial: TiktokVideo[] }) {
           >
             <label className="block">
               <span className="mb-1 block text-xs font-semibold text-navy-600">
-                Link del video
+                Link de la publicación
               </span>
               <input
                 type="url"
                 value={video.videoUrl}
                 onChange={(e) => update(video.id, { videoUrl: e.target.value })}
-                placeholder="https://www.tiktok.com/@usuario/video/..."
+                placeholder="https://www.instagram.com/reel/..."
                 className="focus-ring w-full rounded-lg border border-surface-200 px-3 py-2 text-sm placeholder:text-navy-400"
               />
             </label>

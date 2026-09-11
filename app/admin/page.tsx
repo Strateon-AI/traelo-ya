@@ -14,12 +14,12 @@ export default async function AdminPage() {
     return <AdminLogin />;
   }
 
-  const [{ data: promo }, { data: quoteConfig }, { data: topProducts }, { data: tiktokVideos }] =
+  const [{ data: promo }, { data: quoteConfig }, { data: topProducts }, { data: instagramVideos }] =
     await Promise.all([
       supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
       supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
       supabase.from("top_products").select("*").order("sort_order", { ascending: true }),
-      supabase.from("tiktok_videos").select("*").order("sort_order", { ascending: true }),
+      supabase.from("instagram_videos").select("*").order("sort_order", { ascending: true }),
     ]);
 
   return (
@@ -54,7 +54,7 @@ export default async function AdminPage() {
         sortOrder: p.sort_order,
         visible: p.visible,
       }))}
-      initialTiktokVideos={(tiktokVideos ?? []).map((v) => ({
+      initialInstagramVideos={(instagramVideos ?? []).map((v) => ({
         id: v.id,
         videoUrl: v.video_url,
         sortOrder: v.sort_order,

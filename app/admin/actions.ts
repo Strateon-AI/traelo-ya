@@ -134,7 +134,7 @@ export async function deleteTopProduct(id: string) {
   return { error: null };
 }
 
-export async function upsertTiktokVideo(input: {
+export async function upsertInstagramVideo(input: {
   id: string | null;
   videoUrl: string;
   sortOrder: number;
@@ -150,19 +150,19 @@ export async function upsertTiktokVideo(input: {
   };
 
   const { error: dbError } = input.id
-    ? await supabase.from("tiktok_videos").update(row).eq("id", input.id)
-    : await supabase.from("tiktok_videos").insert(row);
+    ? await supabase.from("instagram_videos").update(row).eq("id", input.id)
+    : await supabase.from("instagram_videos").insert(row);
 
   if (dbError) return { error: dbError.message };
   revalidatePath("/");
   return { error: null };
 }
 
-export async function deleteTiktokVideo(id: string) {
+export async function deleteInstagramVideo(id: string) {
   const { supabase, error } = await requireSession();
   if (error) return { error };
 
-  const { error: dbError } = await supabase.from("tiktok_videos").delete().eq("id", id);
+  const { error: dbError } = await supabase.from("instagram_videos").delete().eq("id", id);
   if (dbError) return { error: dbError.message };
   revalidatePath("/");
   return { error: null };

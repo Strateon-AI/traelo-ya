@@ -3,25 +3,25 @@
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import type { Promo, QuoteConfig, TiktokVideo, TopProduct } from "@/lib/types";
+import type { Promo, QuoteConfig, InstagramVideo, TopProduct } from "@/lib/types";
 import { signOut } from "@/app/admin/actions";
 import { QuoteConfigForm } from "./QuoteConfigForm";
 import { PromoForm } from "./PromoForm";
 import { TopProductsManager } from "./TopProductsManager";
-import { TiktokVideosManager } from "./TiktokVideosManager";
+import { InstagramVideosManager } from "./InstagramVideosManager";
 
 export function AdminDashboard({
   userEmail,
   initialPromo,
   initialQuoteConfig,
   initialTopProducts,
-  initialTiktokVideos,
+  initialInstagramVideos,
 }: {
   userEmail: string;
   initialPromo: Promo | null;
   initialQuoteConfig: QuoteConfig | null;
   initialTopProducts: TopProduct[];
-  initialTiktokVideos: TiktokVideo[];
+  initialInstagramVideos: InstagramVideo[];
 }) {
   const router = useRouter();
 
@@ -53,7 +53,7 @@ export function AdminDashboard({
         <QuoteConfigForm initial={initialQuoteConfig ?? { weightRatePerKg: 28, commissionPercent: 5 }} />
         <PromoForm initial={initialPromo} />
         <TopProductsManager initial={initialTopProducts} />
-        <TiktokVideosManager initial={initialTiktokVideos} />
+        <InstagramVideosManager initial={initialInstagramVideos} />
       </div>
     </div>
   );

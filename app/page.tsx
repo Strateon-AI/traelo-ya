@@ -1,12 +1,12 @@
 import { getQuoteConfig } from "@/lib/data/quoteConfig";
 import { getTopProducts } from "@/lib/data/topProducts";
-import { getTiktokVideos } from "@/lib/data/tiktok";
+import { getInstagramVideos } from "@/lib/data/instagram";
 import { Header } from "@/components/Header";
 import { PromoBanner } from "@/components/PromoBanner";
 import { Hero } from "@/components/Hero";
 import { TrackingSection } from "@/components/TrackingSection";
 import { HowItWorks } from "@/components/HowItWorks";
-import { TikTokSection } from "@/components/TikTokSection";
+import { InstagramSection } from "@/components/InstagramSection";
 import { FAQ } from "@/components/FAQ";
 import { BrandsSection } from "@/components/BrandsSection";
 import { Footer } from "@/components/Footer";
@@ -17,10 +17,10 @@ import { Footer } from "@/components/Footer";
 export const revalidate = 60;
 
 export default async function Home() {
-  const [config, topProducts, tiktokVideos] = await Promise.all([
+  const [config, topProducts, instagramVideos] = await Promise.all([
     getQuoteConfig(),
     getTopProducts(),
-    getTiktokVideos(),
+    getInstagramVideos(),
   ]);
 
   const calculatorProducts = topProducts.map((p) => ({ id: p.id, name: p.name }));
@@ -33,7 +33,7 @@ export default async function Home() {
         <Hero config={config} calculatorProducts={calculatorProducts} />
         <TrackingSection />
         <HowItWorks />
-        <TikTokSection videos={tiktokVideos} />
+        <InstagramSection videos={instagramVideos} />
         <FAQ />
         <BrandsSection />
       </main>

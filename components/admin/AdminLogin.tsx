@@ -36,7 +36,7 @@ export function AdminLogin() {
         </div>
         <p className="mt-1.5 text-sm text-navy-600">
           Ingresá con tu cuenta para editar el cotizador, la promoción, los productos y los
-          videos de TikTok.
+          videos de Instagram.
         </p>
 
         <label className="mt-5 block">

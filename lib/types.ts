@@ -28,8 +28,8 @@ export interface TopProduct {
   visible: boolean;
 }
 
-/** Fila de la tabla tiktok_videos (Supabase). */
-export interface TiktokVideo {
+/** Fila de la tabla instagram_videos (Supabase). */
+export interface InstagramVideo {
   id: string;
   videoUrl: string;
   sortOrder: number;
