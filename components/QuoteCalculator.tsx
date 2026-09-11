@@ -159,6 +159,8 @@ export function QuoteCalculator({
             </Field>
           </div>
 
+          <ClientTypeSelector value={clientType} onChange={setClientType} />
+
           <Field label="Peso estimado de todo el pedido (kg)">
             <input
               type="number"
@@ -190,6 +192,8 @@ export function QuoteCalculator({
         </div>
       ) : (
         <div className="mt-5 space-y-4">
+          <ClientTypeSelector value={clientType} onChange={setClientType} />
+
           <Field label="Peso estimado en kg">
             <input
               type="number"
@@ -208,8 +212,6 @@ export function QuoteCalculator({
           <SummaryRow label="Total estimado" value={formatUsd(weightResult.total)} emphasis />
         </div>
       )}
-
-      <ClientTypeSelector value={clientType} onChange={setClientType} />
 
       <div className="mt-5 flex gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
         <span className="text-amber-500">⚠️</span>
