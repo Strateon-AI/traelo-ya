@@ -1,11 +1,10 @@
-import { Plane } from "lucide-react";
-
 /**
  * Composición visual del hero: avión, acentos de bandera EEUU/Bolivia y
  * silueta de ciudad. Es un placeholder ilustrado (no una fotografía) hecho
  * con SVG/CSS para que el layout y la sensación general queden como en la
- * referencia mientras llega material fotográfico real. Reemplazar por foto
- * de avión + cajas + skyline cuando el cliente la mande.
+ * referencia mientras llega material fotográfico real. El avión es un
+ * gráfico propio (silueta vista desde arriba, no un ícono de línea suelto).
+ * Reemplazar por foto de avión + cajas + skyline cuando el cliente la mande.
  */
 export function HeroBackground() {
   return (
@@ -30,11 +29,24 @@ export function HeroBackground() {
         <div className="h-1/3 bg-[#007A33]" />
       </div>
 
-      {/* avión */}
-      <Plane
-        className="absolute right-[18%] top-[18%] h-20 w-20 rotate-[35deg] text-navy-800/70 sm:h-28 sm:w-28"
-        strokeWidth={1.4}
-      />
+      {/* avión — silueta propia vista desde arriba, sólida (no un ícono de línea) */}
+      <svg
+        viewBox="0 0 100 100"
+        className="absolute right-[18%] top-[18%] h-20 w-20 rotate-[35deg] text-navy-800/70 drop-shadow-sm sm:h-28 sm:w-28"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        {/* fuselaje */}
+        <polygon points="96,50 56,43 21,48 21,52 56,57" />
+        {/* ala superior */}
+        <polygon points="63,45 21,9 47,46" />
+        {/* ala inferior */}
+        <polygon points="63,55 21,91 47,54" />
+        {/* estabilizador superior (cola) */}
+        <polygon points="29,46 13,31 23,48" />
+        {/* estabilizador inferior (cola) */}
+        <polygon points="29,54 13,69 23,52" />
+      </svg>
 
       {/* skyline difuminado */}
       <svg

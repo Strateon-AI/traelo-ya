@@ -114,8 +114,6 @@ export function QuoteCalculator({
         </TabButton>
       </div>
 
-      <ClientTypeSelector value={clientType} onChange={setClientType} />
-
       {mode === "product" ? (
         <div className="mt-5 space-y-4">
           <Field label="¿Qué producto quieres traer?">
@@ -210,6 +208,8 @@ export function QuoteCalculator({
           <SummaryRow label="Total estimado" value={formatUsd(weightResult.total)} emphasis />
         </div>
       )}
+
+      <ClientTypeSelector value={clientType} onChange={setClientType} />
 
       <div className="mt-5 flex gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
         <span className="text-amber-500">⚠️</span>

@@ -6,7 +6,6 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { Hero } from "@/components/Hero";
 import { TrackingSection } from "@/components/TrackingSection";
 import { HowItWorks } from "@/components/HowItWorks";
-import { TopProducts } from "@/components/TopProducts";
 import { TikTokSection } from "@/components/TikTokSection";
 import { FAQ } from "@/components/FAQ";
 import { BrandsSection } from "@/components/BrandsSection";
@@ -34,7 +33,6 @@ export default async function Home() {
         <Hero config={config} calculatorProducts={calculatorProducts} />
         <TrackingSection />
         <HowItWorks />
-        <TopProducts products={topProducts} />
         <TikTokSection videos={tiktokVideos} />
         <FAQ />
         <BrandsSection />

@@ -2,7 +2,33 @@ import { Phone } from "lucide-react";
 import { WhatsAppGlyph } from "./icons";
 import { WHATSAPP_DISPLAY_NUMBER, genericContactUrl } from "@/lib/whatsapp";
 
-const BRANDS = ["Amazon", "eBay", "Walmart", "Best Buy", "Apple"];
+type Brand = { name: string; iconUrl?: string };
+
+/**
+ * Logos reales de marca vía simple-icons (cdn.simpleicons.org), en blanco
+ * para verse bien sobre el fondo oscuro. No son aproximaciones dibujadas
+ * a mano — es el mismo criterio que ya se usó en La Tienda para los
+ * íconos de WhatsApp/redes.
+ *
+ * Amazon, Walmart y Best Buy quedan como texto: ninguna de las tres
+ * existe en simple-icons (confirmado — cdn.simpleicons.org devuelve 404
+ * para esos tres slugs), así que no hay logo real para usar ahí sin
+ * traer el asset de otra fuente.
+ */
+const BRANDS: Brand[] = [
+  { name: "Amazon" },
+  { name: "eBay", iconUrl: "https://cdn.simpleicons.org/ebay/ffffff" },
+  { name: "Walmart" },
+  { name: "Best Buy" },
+  { name: "Apple", iconUrl: "https://cdn.simpleicons.org/apple/ffffff" },
+];
+
+function BrandMark({ brand }: { brand: Brand }) {
+  if (!brand.iconUrl) {
+    return <span className="text-lg font-bold tracking-tight text-white/80 sm:text-xl">{brand.name}</span>;
+  }
+  return <img src={brand.iconUrl} alt={brand.name} className="h-6 w-auto opacity-80 sm:h-7" />;
+}
 
 export function BrandsSection() {
   return (
@@ -32,12 +58,7 @@ export function BrandsSection() {
 
             <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
               {BRANDS.map((brand) => (
-                <span
-                  key={brand}
-                  className="text-lg font-bold tracking-tight text-white/80 sm:text-xl"
-                >
-                  {brand}
-                </span>
+                <BrandMark key={brand.name} brand={brand} />
               ))}
             </div>
           </div>
