@@ -29,21 +29,30 @@ export function QuoteCalculator({
 }) {
   const [clientType, setClientType] = useState<ClientType>("card");
   const [productName, setProductName] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | "">(1);
+  const [productPrice, setProductPrice] = useState<number | "">("");
   const [weightKg, setWeightKg] = useState<number | "">("");
   const [agreed, setAgreed] = useState(false);
 
   // Si cambia cualquier dato del cálculo, la confirmación previa queda vieja.
-  const quoteSignature = `${clientType}|${productName}|${quantity}|${weightKg}`;
+  const quoteSignature = `${clientType}|${productName}|${quantity}|${productPrice}|${weightKg}`;
   const [lastSignature, setLastSignature] = useState(quoteSignature);
   if (quoteSignature !== lastSignature) {
     setLastSignature(quoteSignature);
     setAgreed(false);
   }
 
+  const isBuyForYou = clientType === "buy-for-you";
+  const effectiveQuantity = typeof quantity === "number" ? quantity : 1;
+
   const result = calculateQuote({
+    isBuyForYou,
     weightKg: typeof weightKg === "number" ? weightKg : 0,
     ratePerKg: config.weightRatePerKg,
+    productPrice: typeof productPrice === "number" ? productPrice : 0,
+    quantity: effectiveQuantity,
+    commissionPercent: config.commissionPercent,
+    commissionEnabled: config.commissionEnabled,
   });
 
   if (clientType === "business") {
@@ -62,14 +71,16 @@ export function QuoteCalculator({
 
   const hasWeight = typeof weightKg === "number" && weightKg > 0;
   const canSubmit = agreed && hasWeight;
-  const isBuyForYou = clientType === "buy-for-you";
 
   const whatsappHref = quoteUrl({
     productName: productName.trim(),
-    quantity,
+    quantity: effectiveQuantity,
+    productPrice: typeof productPrice === "number" ? productPrice : 0,
     clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
     isBuyForYou,
+    commissionEnabled: config.commissionEnabled,
     commissionPercent: config.commissionPercent,
+    commissionCost: result.commissionCost,
     weightKg: typeof weightKg === "number" ? weightKg : 0,
     shippingCost: result.shippingCost,
     total: result.total,
@@ -83,7 +94,7 @@ export function QuoteCalculator({
         <ClientTypeSelector value={clientType} onChange={setClientType} />
       </div>
 
-      {isBuyForYou && (
+      {isBuyForYou && !config.commissionEnabled && (
         <div className="mt-3 flex gap-2.5 rounded-2xl border border-brand-blue-500/20 bg-brand-blue-100/40 p-3.5">
           <span className="text-brand-blue-600">ℹ️</span>
           <p className="text-xs leading-relaxed text-navy-700">
@@ -110,16 +121,38 @@ export function QuoteCalculator({
           </datalist>
         </Field>
 
-        <Field label="Cantidad">
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
-          />
-        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Cantidad">
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={quantity}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setQuantity(raw === "" ? "" : Math.max(1, Math.floor(Number(raw))));
+              }}
+              onBlur={() => {
+                if (quantity === "" || quantity < 1) setQuantity(1);
+              }}
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
+            />
+          </Field>
+          <Field label="Precio (USD, opcional)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={productPrice}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setProductPrice(raw === "" ? "" : Math.max(0, Number(raw)));
+              }}
+              placeholder="0.00"
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+            />
+          </Field>
+        </div>
 
         <Field label="Peso estimado de todo el pedido (kg)">
           <input
@@ -138,9 +171,17 @@ export function QuoteCalculator({
 
         <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
         <SummaryRow label="Costo de envío" value={formatUsd(result.shippingCost)} />
+        {result.hasCommission && (
+          <SummaryRow
+            label={`Comisión de compra (${config.commissionPercent}%)`}
+            value={formatUsd(result.commissionCost)}
+          />
+        )}
         <SummaryRow label="Total estimado" value={formatUsd(result.total)} emphasis />
         <p className="-mt-1 text-xs text-navy-500">
-          No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte.
+          {result.hasCommission
+            ? "El total incluye envío y comisión de compra — no incluye el valor del producto."
+            : "No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte."}
         </p>
       </div>
 

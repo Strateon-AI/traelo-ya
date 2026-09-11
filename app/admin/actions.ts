@@ -46,7 +46,11 @@ export async function uploadImage(formData: FormData): Promise<{ url: string | n
   return { url: data.publicUrl, error: null };
 }
 
-export async function updateQuoteConfig(input: { weightRatePerKg: number; commissionPercent: number }) {
+export async function updateQuoteConfig(input: {
+  weightRatePerKg: number;
+  commissionPercent: number;
+  commissionEnabled: boolean;
+}) {
   const { supabase, error } = await requireSession();
   if (error) return { error };
 
@@ -55,6 +59,7 @@ export async function updateQuoteConfig(input: { weightRatePerKg: number; commis
     .update({
       weight_rate_per_kg: input.weightRatePerKg,
       commission_percent: input.commissionPercent,
+      commission_enabled: input.commissionEnabled,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

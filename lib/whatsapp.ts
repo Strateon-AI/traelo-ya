@@ -22,9 +22,12 @@ export function customProductInquiryUrl(): string {
 export interface QuoteMessageInput {
   productName: string;
   quantity: number;
+  productPrice: number;
   clientTypeLabel: string;
   isBuyForYou: boolean;
+  commissionEnabled: boolean;
   commissionPercent: number;
+  commissionCost: number;
   weightKg: number;
   shippingCost: number;
   total: number;
@@ -37,11 +40,18 @@ export function buildQuoteMessage(input: QuoteMessageInput): string {
     lines.push(`Producto: ${input.productName}`);
     lines.push(`Cantidad: ${input.quantity}`);
   }
+  if (input.productPrice > 0) {
+    lines.push(`Precio del producto: US$ ${input.productPrice.toFixed(2)}`);
+  }
   lines.push(`Modalidad: ${input.clientTypeLabel}`);
   if (input.isBuyForYou) {
-    lines.push(
-      `(Incluye comisión de compra del ${input.commissionPercent}% sobre el precio del producto — a coordinar)`
-    );
+    if (input.commissionEnabled) {
+      lines.push(`Comisión de compra (${input.commissionPercent}%): US$ ${input.commissionCost.toFixed(2)}`);
+    } else {
+      lines.push(
+        `(Incluye comisión de compra del ${input.commissionPercent}% sobre el precio del producto — a coordinar)`
+      );
+    }
   }
   lines.push(`Peso estimado: ${input.weightKg} kg`);
   lines.push(`Envío estimado: US$ ${input.shippingCost.toFixed(2)}`);

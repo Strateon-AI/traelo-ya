@@ -9,13 +9,14 @@ import { Banner } from "./Banner";
 export function QuoteConfigForm({ initial }: { initial: QuoteConfig }) {
   const [weightRatePerKg, setWeightRatePerKg] = useState(initial.weightRatePerKg);
   const [commissionPercent, setCommissionPercent] = useState(initial.commissionPercent);
+  const [commissionEnabled, setCommissionEnabled] = useState(initial.commissionEnabled);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function handleSave() {
     setSaving(true);
     setBanner(null);
-    const result = await updateQuoteConfig({ weightRatePerKg, commissionPercent });
+    const result = await updateQuoteConfig({ weightRatePerKg, commissionPercent, commissionEnabled });
     setSaving(false);
     setBanner(
       result.error
@@ -27,9 +28,7 @@ export function QuoteConfigForm({ initial }: { initial: QuoteConfig }) {
   return (
     <section className="rounded-3xl bg-white p-6 shadow-card sm:p-7">
       <h2 className="text-base font-bold text-navy-900">Tarifas del cotizador</h2>
-      <p className="mt-1 text-sm text-navy-600">
-        Se usan en las dos pestañas del cotizador (&quot;Por producto&quot; y &quot;Por peso&quot;) en la home.
-      </p>
+      <p className="mt-1 text-sm text-navy-600">Se usan en el cotizador de la home.</p>
       <Banner banner={banner} />
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
@@ -59,6 +58,26 @@ export function QuoteConfigForm({ initial }: { initial: QuoteConfig }) {
           />
         </label>
       </div>
+
+      <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-surface-200 p-3.5 text-sm">
+        <input
+          type="checkbox"
+          checked={commissionEnabled}
+          onChange={(e) => setCommissionEnabled(e.target.checked)}
+          className="focus-ring mt-0.5 h-4 w-4 rounded border-surface-200 text-brand-blue-600"
+        />
+        <span>
+          <span className="block font-semibold text-navy-900">
+            Calcular la comisión en el cotizador
+          </span>
+          <span className="mt-0.5 block text-xs text-navy-500">
+            Activado: el cliente ve el monto exacto de la comisión sumado al total (pide el
+            precio del producto). Desactivado: solo se avisa que se cobra un % extra, y se
+            coordina el monto por WhatsApp.
+          </span>
+        </span>
+      </label>
+
       <button
         type="button"
         onClick={handleSave}

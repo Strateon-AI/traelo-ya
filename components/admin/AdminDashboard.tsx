@@ -50,7 +50,9 @@ export function AdminDashboard({
       </header>
 
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
-        <QuoteConfigForm initial={initialQuoteConfig ?? { weightRatePerKg: 28, commissionPercent: 5 }} />
+        <QuoteConfigForm
+          initial={initialQuoteConfig ?? { weightRatePerKg: 28, commissionPercent: 5, commissionEnabled: true }}
+        />
         <PromoForm initial={initialPromo} />
         <TopProductsManager initial={initialTopProducts} />
         <InstagramVideosManager initial={initialInstagramVideos} />

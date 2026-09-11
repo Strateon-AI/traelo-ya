@@ -4,6 +4,7 @@ export type ClientType = "card" | "buy-for-you" | "business";
 export interface QuoteConfig {
   weightRatePerKg: number;
   commissionPercent: number;
+  commissionEnabled: boolean;
 }
 
 /** Fila de la tabla promo (Supabase) — banner de promoción. */

@@ -43,6 +43,7 @@ export default async function AdminPage() {
           ? {
               weightRatePerKg: Number(quoteConfig.weight_rate_per_kg),
               commissionPercent: Number(quoteConfig.commission_percent),
+              commissionEnabled: Boolean(quoteConfig.commission_enabled),
             }
           : null
       }
