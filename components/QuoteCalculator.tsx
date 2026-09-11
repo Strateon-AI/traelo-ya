@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Info } from "lucide-react";
+import { Calculator } from "lucide-react";
 import type { ClientType, ProductSuggestion, QuoteConfig } from "@/lib/types";
 import { calculateQuote, formatUsd } from "@/lib/calculator";
 import { quoteUrl } from "@/lib/whatsapp";
@@ -30,14 +30,11 @@ export function QuoteCalculator({
   const [clientType, setClientType] = useState<ClientType>("card");
   const [productName, setProductName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [productPrice, setProductPrice] = useState<number | "">("");
   const [weightKg, setWeightKg] = useState<number | "">("");
   const [agreed, setAgreed] = useState(false);
 
   // Si cambia cualquier dato del cálculo, la confirmación previa queda vieja.
-  // (patrón de "ajustar estado durante el render" recomendado por React en
-  // vez de un useEffect, para no disparar un setState síncrono en el efecto)
-  const quoteSignature = `${clientType}|${productName}|${quantity}|${productPrice}|${weightKg}`;
+  const quoteSignature = `${clientType}|${productName}|${quantity}|${weightKg}`;
   const [lastSignature, setLastSignature] = useState(quoteSignature);
   if (quoteSignature !== lastSignature) {
     setLastSignature(quoteSignature);
@@ -45,19 +42,17 @@ export function QuoteCalculator({
   }
 
   const result = calculateQuote({
-    clientType,
     weightKg: typeof weightKg === "number" ? weightKg : 0,
     ratePerKg: config.weightRatePerKg,
-    productPrice: typeof productPrice === "number" ? productPrice : 0,
-    quantity,
-    commissionPercent: config.commissionPercent,
   });
 
   if (clientType === "business") {
     return (
       <div className="rounded-3xl bg-white p-6 shadow-card-lg sm:p-7">
         <CalculatorHeader />
-        <ClientTypeSelector value={clientType} onChange={setClientType} />
+        <div className="mt-5">
+          <ClientTypeSelector value={clientType} onChange={setClientType} />
+        </div>
         <div className="mt-5">
           <BusinessQuoteCard variant="embedded" />
         </div>
@@ -67,14 +62,14 @@ export function QuoteCalculator({
 
   const hasWeight = typeof weightKg === "number" && weightKg > 0;
   const canSubmit = agreed && hasWeight;
+  const isBuyForYou = clientType === "buy-for-you";
 
   const whatsappHref = quoteUrl({
     productName: productName.trim(),
     quantity,
-    productPrice: typeof productPrice === "number" ? productPrice : 0,
     clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
-    commissionCost: result.commissionCost,
-    isCommissionApplied: result.commissionRate > 0,
+    isBuyForYou,
+    commissionPercent: config.commissionPercent,
     weightKg: typeof weightKg === "number" ? weightKg : 0,
     shippingCost: result.shippingCost,
     total: result.total,
@@ -83,6 +78,20 @@ export function QuoteCalculator({
   return (
     <div className="rounded-3xl bg-white p-6 shadow-card-lg sm:p-7">
       <CalculatorHeader />
+
+      <div className="mt-5">
+        <ClientTypeSelector value={clientType} onChange={setClientType} />
+      </div>
+
+      {isBuyForYou && (
+        <div className="mt-3 flex gap-2.5 rounded-2xl border border-brand-blue-500/20 bg-brand-blue-100/40 p-3.5">
+          <span className="text-brand-blue-600">ℹ️</span>
+          <p className="text-xs leading-relaxed text-navy-700">
+            Se cobra un {config.commissionPercent}% adicional de comisión de compra sobre el
+            precio del producto — coordinamos el monto exacto por WhatsApp.
+          </p>
+        </div>
+      )}
 
       <div className="mt-5 space-y-4">
         <Field label="¿Qué producto quieres traer? (opcional)">
@@ -101,38 +110,16 @@ export function QuoteCalculator({
           </datalist>
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Cantidad">
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
-            />
-          </Field>
-          <Field label="Precio (USD, opcional)">
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={productPrice}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setProductPrice(raw === "" ? "" : Math.max(0, Number(raw)));
-              }}
-              placeholder="0.00"
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-            />
-          </Field>
-        </div>
-        <p className="-mt-2 text-xs text-navy-500">
-          El producto y el precio son opcionales — solo se usan para calcular la comisión de
-          compra. El envío siempre se calcula por peso.
-        </p>
-
-        <ClientTypeSelector value={clientType} onChange={setClientType} />
+        <Field label="Cantidad">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
+          />
+        </Field>
 
         <Field label="Peso estimado de todo el pedido (kg)">
           <input
@@ -151,13 +138,6 @@ export function QuoteCalculator({
 
         <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
         <SummaryRow label="Costo de envío" value={formatUsd(result.shippingCost)} />
-        {result.commissionRate > 0 && (
-          <SummaryRow
-            label={`Servicio de compra (${result.commissionRate}%)`}
-            value={formatUsd(result.commissionCost)}
-            icon
-          />
-        )}
         <SummaryRow label="Total estimado" value={formatUsd(result.total)} emphasis />
         <p className="-mt-1 text-xs text-navy-500">
           No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte.
@@ -277,12 +257,10 @@ function SummaryRow({
   label,
   value,
   emphasis,
-  icon,
 }: {
   label: string;
   value: string;
   emphasis?: boolean;
-  icon?: boolean;
 }) {
   return (
     <div
@@ -290,10 +268,7 @@ function SummaryRow({
         emphasis ? "text-base" : ""
       }`}
     >
-      <span className={`flex items-center gap-1.5 ${emphasis ? "font-bold text-navy-900" : "text-navy-600"}`}>
-        {label}
-        {icon && <Info className="h-3.5 w-3.5 text-navy-400" />}
-      </span>
+      <span className={emphasis ? "font-bold text-navy-900" : "text-navy-600"}>{label}</span>
       <span className={emphasis ? "font-extrabold text-brand-red-600" : "font-semibold text-navy-900"}>
         {value}
       </span>

@@ -1,46 +1,18 @@
-import type { ClientType } from "./types";
-
 export interface QuoteResult {
   shippingCost: number;
-  commissionRate: number;
-  commissionCost: number;
   total: number;
 }
 
 /**
- * Cotización única: no hay catálogo fijo de productos, Tráelo Ya trae
- * cualquier cosa y el envío se cobra siempre por peso real (`ratePerKg`,
- * hoy US$28/kg).
- * - `productPrice` es opcional — solo se usa para calcular la comisión del
- *   5% cuando Tráelo Ya compra por el cliente. Nunca se suma al total: ese
- *   valor lo paga el cliente directo en la tienda o se lo reembolsa a
- *   Tráelo Ya por separado.
- * - `weightKg` es el peso estimado de todo el pedido (no por unidad) y es
- *   lo único que determina el costo de envío.
+ * El envío se cobra siempre por peso real (`ratePerKg`, hoy US$28/kg) — no
+ * hay catálogo fijo de productos, así que el precio del producto ya no se
+ * pide en el formulario. La comisión del 5% de "Compramos por vos" no se
+ * calcula acá: se avisa en el formulario y se coordina el monto por
+ * WhatsApp, porque requeriría el precio real del producto.
  */
-export function calculateQuote(params: {
-  clientType: ClientType;
-  weightKg: number;
-  ratePerKg: number;
-  productPrice: number;
-  quantity: number;
-  commissionPercent: number;
-}): QuoteResult {
-  const quantity = Math.max(1, Math.floor(params.quantity) || 1);
+export function calculateQuote(params: { weightKg: number; ratePerKg: number }): QuoteResult {
   const shippingCost = round2(Math.max(0, params.weightKg || 0) * params.ratePerKg);
-
-  const commissionRate = params.clientType === "buy-for-you" ? params.commissionPercent : 0;
-  const commissionCost =
-    commissionRate > 0
-      ? round2(((params.productPrice || 0) * quantity * commissionRate) / 100)
-      : 0;
-
-  return {
-    shippingCost,
-    commissionRate,
-    commissionCost,
-    total: round2(shippingCost + commissionCost),
-  };
+  return { shippingCost, total: shippingCost };
 }
 
 function round2(value: number): number {
