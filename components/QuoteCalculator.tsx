@@ -124,13 +124,13 @@ export function QuoteCalculator({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Cantidad">
             <input
-              type="number"
-              min={1}
-              step={1}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={quantity}
               onChange={(e) => {
-                const raw = e.target.value;
-                setQuantity(raw === "" ? "" : Math.max(1, Math.floor(Number(raw))));
+                const digitsOnly = e.target.value.replace(/[^0-9]/g, "");
+                setQuantity(digitsOnly === "" ? "" : Math.max(1, parseInt(digitsOnly, 10)));
               }}
               onBlur={() => {
                 if (quantity === "" || quantity < 1) setQuantity(1);
