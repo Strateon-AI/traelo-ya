@@ -19,16 +19,20 @@ export function customProductInquiryUrl(): string {
   );
 }
 
-export interface QuoteMessageInput {
+export interface QuoteLineMessageInput {
   productName: string;
   quantity: number;
-  productPrice: number;
+  unitPrice: number;
+}
+
+export interface QuoteMessageInput {
+  lines: QuoteLineMessageInput[];
   clientTypeLabel: string;
   isBuyForYou: boolean;
   commissionEnabled: boolean;
   commissionPercent: number;
   commissionCost: number;
-  weightKg: number;
+  totalWeightKg: number;
   shippingCost: number;
   total: number;
 }
@@ -36,13 +40,16 @@ export interface QuoteMessageInput {
 export function buildQuoteMessage(input: QuoteMessageInput): string {
   const lines = ["Hola Tráelo Ya 👋", "Quiero solicitar una cotización.", ""];
 
-  if (input.productName.trim()) {
-    lines.push(`Producto: ${input.productName}`);
-    lines.push(`Cantidad: ${input.quantity}`);
+  const namedLines = input.lines.filter((line) => line.productName.trim().length > 0);
+  if (namedLines.length > 0) {
+    lines.push("Productos:");
+    namedLines.forEach((line) => {
+      const priceText = line.unitPrice > 0 ? ` — US$ ${line.unitPrice.toFixed(2)} c/u` : "";
+      lines.push(`• ${line.productName} (x${line.quantity})${priceText}`);
+    });
+    lines.push("");
   }
-  if (input.productPrice > 0) {
-    lines.push(`Precio del producto: US$ ${input.productPrice.toFixed(2)}`);
-  }
+
   lines.push(`Modalidad: ${input.clientTypeLabel}`);
   if (input.isBuyForYou) {
     if (input.commissionEnabled) {
@@ -53,7 +60,7 @@ export function buildQuoteMessage(input: QuoteMessageInput): string {
       );
     }
   }
-  lines.push(`Peso estimado: ${input.weightKg} kg`);
+  lines.push(`Peso total estimado: ${input.totalWeightKg} kg`);
   lines.push(`Envío estimado: US$ ${input.shippingCost.toFixed(2)}`);
   lines.push(`Total estimado: US$ ${input.total.toFixed(2)}`);
   lines.push("");

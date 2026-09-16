@@ -1,4 +1,11 @@
+export interface QuoteLineInput {
+  quantity: number;
+  unitWeightKg: number;
+  unitPrice: number;
+}
+
 export interface QuoteResult {
+  totalWeightKg: number;
   shippingCost: number;
   commissionCost: number;
   hasCommission: boolean;
@@ -6,33 +13,39 @@ export interface QuoteResult {
 }
 
 /**
- * El envío se cobra siempre por peso real (`ratePerKg`, hoy US$28/kg) — no
- * hay catálogo fijo de productos.
- *
- * La comisión de "Compramos por vos" depende de `commissionEnabled`
- * (configurable en /admin, tabla quote_config):
- * - true: se calcula sobre `productPrice × quantity` y se suma al total.
- * - false: no se calcula nada acá — el formulario solo avisa el % y se
- *   coordina el monto por WhatsApp (para eso ni hace falta pedir el precio).
+ * Cotización con varias líneas de producto. El peso y el precio de cada
+ * línea son "por unidad" — se multiplican por la cantidad de esa línea antes
+ * de sumarlos entre todas. El envío se cobra siempre por el peso total real
+ * (`ratePerKg`, hoy US$28/kg); la comisión de "Compramos por vos" (si está
+ * habilitada) se calcula sobre la suma de precio×cantidad de todas las
+ * líneas.
  */
 export function calculateQuote(params: {
   isBuyForYou: boolean;
-  weightKg: number;
+  lines: QuoteLineInput[];
   ratePerKg: number;
-  productPrice: number;
-  quantity: number;
   commissionPercent: number;
   commissionEnabled: boolean;
 }): QuoteResult {
-  const shippingCost = round2(Math.max(0, params.weightKg || 0) * params.ratePerKg);
+  const totalWeightKg = round2(
+    params.lines.reduce(
+      (sum, line) => sum + Math.max(0, line.quantity) * Math.max(0, line.unitWeightKg),
+      0
+    )
+  );
+  const shippingCost = round2(totalWeightKg * params.ratePerKg);
 
   const applyCommission = params.isBuyForYou && params.commissionEnabled;
-  const quantity = Math.max(1, Math.floor(params.quantity) || 1);
+  const totalPriceBase = params.lines.reduce(
+    (sum, line) => sum + Math.max(0, line.quantity) * Math.max(0, line.unitPrice),
+    0
+  );
   const commissionCost = applyCommission
-    ? round2(((params.productPrice || 0) * quantity * params.commissionPercent) / 100)
+    ? round2((totalPriceBase * params.commissionPercent) / 100)
     : 0;
 
   return {
+    totalWeightKg,
     shippingCost,
     commissionCost,
     hasCommission: applyCommission,

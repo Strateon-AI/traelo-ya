@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator } from "lucide-react";
+import { Calculator, Plus, Trash2 } from "lucide-react";
 import type { ClientType, ProductSuggestion, QuoteConfig } from "@/lib/types";
 import { calculateQuote, formatUsd } from "@/lib/calculator";
 import { quoteUrl } from "@/lib/whatsapp";
 import { WhatsAppGlyph } from "./icons";
 import { BusinessQuoteCard } from "./BusinessQuoteCard";
 import { LinkWeightEstimator } from "./LinkWeightEstimator";
+import { WarehouseAddressCard } from "./WarehouseAddressCard";
 
 const CLIENT_TYPES: { id: ClientType; label: string; helper: string }[] = [
   { id: "card", label: "Con tu tarjeta", helper: "Sin costo adicional" },
@@ -21,6 +22,24 @@ const CLIENT_TYPE_MESSAGE_LABEL: Record<ClientType, string> = {
   business: "Comercio / pedido grande",
 };
 
+interface ProductLine {
+  id: string;
+  productName: string;
+  quantity: number | "";
+  unitPrice: number | "";
+  unitWeightKg: number | "";
+}
+
+function newLine(): ProductLine {
+  return {
+    id: typeof crypto !== "undefined" ? crypto.randomUUID() : String(Math.random()),
+    productName: "",
+    quantity: 1,
+    unitPrice: "",
+    unitWeightKg: "",
+  };
+}
+
 export function QuoteCalculator({
   config,
   products,
@@ -29,14 +48,23 @@ export function QuoteCalculator({
   products: ProductSuggestion[];
 }) {
   const [clientType, setClientType] = useState<ClientType>("card");
-  const [productName, setProductName] = useState("");
-  const [quantity, setQuantity] = useState<number | "">(1);
-  const [productPrice, setProductPrice] = useState<number | "">("");
-  const [weightKg, setWeightKg] = useState<number | "">("");
+  const [lines, setLines] = useState<ProductLine[]>([newLine()]);
   const [agreed, setAgreed] = useState(false);
 
+  function updateLine(id: string, patch: Partial<ProductLine>) {
+    setLines((prev) => prev.map((line) => (line.id === id ? { ...line, ...patch } : line)));
+  }
+
+  function addLine() {
+    setLines((prev) => [...prev, newLine()]);
+  }
+
+  function removeLine(id: string) {
+    setLines((prev) => (prev.length > 1 ? prev.filter((line) => line.id !== id) : prev));
+  }
+
   // Si cambia cualquier dato del cálculo, la confirmación previa queda vieja.
-  const quoteSignature = `${clientType}|${productName}|${quantity}|${productPrice}|${weightKg}`;
+  const quoteSignature = `${clientType}|${JSON.stringify(lines)}`;
   const [lastSignature, setLastSignature] = useState(quoteSignature);
   if (quoteSignature !== lastSignature) {
     setLastSignature(quoteSignature);
@@ -44,14 +72,15 @@ export function QuoteCalculator({
   }
 
   const isBuyForYou = clientType === "buy-for-you";
-  const effectiveQuantity = typeof quantity === "number" ? quantity : 1;
 
   const result = calculateQuote({
     isBuyForYou,
-    weightKg: typeof weightKg === "number" ? weightKg : 0,
+    lines: lines.map((line) => ({
+      quantity: typeof line.quantity === "number" ? line.quantity : 1,
+      unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
+      unitWeightKg: typeof line.unitWeightKg === "number" ? line.unitWeightKg : 0,
+    })),
     ratePerKg: config.weightRatePerKg,
-    productPrice: typeof productPrice === "number" ? productPrice : 0,
-    quantity: effectiveQuantity,
     commissionPercent: config.commissionPercent,
     commissionEnabled: config.commissionEnabled,
   });
@@ -70,19 +99,21 @@ export function QuoteCalculator({
     );
   }
 
-  const hasWeight = typeof weightKg === "number" && weightKg > 0;
+  const hasWeight = result.totalWeightKg > 0;
   const canSubmit = agreed && hasWeight;
 
   const whatsappHref = quoteUrl({
-    productName: productName.trim(),
-    quantity: effectiveQuantity,
-    productPrice: typeof productPrice === "number" ? productPrice : 0,
+    lines: lines.map((line) => ({
+      productName: line.productName.trim(),
+      quantity: typeof line.quantity === "number" ? line.quantity : 1,
+      unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
+    })),
     clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
     isBuyForYou,
     commissionEnabled: config.commissionEnabled,
     commissionPercent: config.commissionPercent,
     commissionCost: result.commissionCost,
-    weightKg: typeof weightKg === "number" ? weightKg : 0,
+    totalWeightKg: result.totalWeightKg,
     shippingCost: result.shippingCost,
     total: result.total,
   });
@@ -105,74 +136,32 @@ export function QuoteCalculator({
         </div>
       )}
 
+      {clientType === "card" && <WarehouseAddressCard />}
+
       <div className="mt-5 space-y-4">
-        <Field label="¿Qué producto quieres traer? (opcional)">
-          <input
-            type="text"
-            list="producto-sugerencias"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            placeholder="Ej. iPhone 16 Pro, zapatillas, consola de videojuegos..."
-            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+        {lines.map((line, index) => (
+          <ProductLineFields
+            key={line.id}
+            index={index}
+            line={line}
+            products={products}
+            canRemove={lines.length > 1}
+            onChange={(patch) => updateLine(line.id, patch)}
+            onRemove={() => removeLine(line.id)}
           />
-          <datalist id="producto-sugerencias">
-            {products.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-          </datalist>
-        </Field>
+        ))}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Cantidad">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={quantity}
-              onChange={(e) => {
-                const digitsOnly = e.target.value.replace(/[^0-9]/g, "");
-                setQuantity(digitsOnly === "" ? "" : Math.max(1, parseInt(digitsOnly, 10)));
-              }}
-              onBlur={() => {
-                if (quantity === "" || quantity < 1) setQuantity(1);
-              }}
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
-            />
-          </Field>
-          <Field label="Precio (USD, opcional)">
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={productPrice}
-              onChange={(e) => {
-                const raw = e.target.value;
-                setProductPrice(raw === "" ? "" : Math.max(0, Number(raw)));
-              }}
-              placeholder="0.00"
-              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-            />
-          </Field>
-        </div>
-
-        <LinkWeightEstimator onWeight={(kg) => setWeightKg(kg)} />
-
-        <Field label="Peso estimado de todo el pedido (kg)">
-          <input
-            type="number"
-            min={0}
-            step="0.1"
-            value={weightKg}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setWeightKg(raw === "" ? "" : Math.max(0, Number(raw)));
-            }}
-            placeholder="0"
-            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-          />
-        </Field>
+        <button
+          type="button"
+          onClick={addLine}
+          className="focus-ring flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-brand-blue-500/40 py-2.5 text-sm font-semibold text-brand-blue-600 hover:bg-brand-blue-100/40"
+        >
+          <Plus className="h-4 w-4" />
+          Agregar otro producto
+        </button>
 
         <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
+        <SummaryRow label="Peso total estimado" value={`${result.totalWeightKg} kg`} />
         <SummaryRow label="Costo de envío" value={formatUsd(result.shippingCost)} />
         {result.hasCommission && (
           <SummaryRow
@@ -229,6 +218,117 @@ export function QuoteCalculator({
           Enviar cotización por WhatsApp
         </button>
       )}
+    </div>
+  );
+}
+
+function ProductLineFields({
+  index,
+  line,
+  products,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  index: number;
+  line: ProductLine;
+  products: ProductSuggestion[];
+  canRemove: boolean;
+  onChange: (patch: Partial<ProductLine>) => void;
+  onRemove: () => void;
+}) {
+  const datalistId = `producto-sugerencias-${index}`;
+
+  return (
+    <div className="rounded-2xl border border-surface-200 p-3.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-wide text-navy-400">
+          Producto {index + 1}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Eliminar este producto"
+            className="focus-ring flex h-7 w-7 items-center justify-center rounded-full text-navy-400 hover:bg-brand-red-600/10 hover:text-brand-red-600"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2.5 space-y-3">
+        <Field label="¿Qué producto quieres traer? (opcional)">
+          <input
+            type="text"
+            list={datalistId}
+            value={line.productName}
+            onChange={(e) => onChange({ productName: e.target.value })}
+            placeholder="Ej. iPhone 16 Pro, zapatillas, consola de videojuegos..."
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+          <datalist id={datalistId}>
+            {products.map((p) => (
+              <option key={p.id} value={p.name} />
+            ))}
+          </datalist>
+        </Field>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Cantidad">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={line.quantity}
+              onChange={(e) => {
+                const digitsOnly = e.target.value.replace(/[^0-9]/g, "");
+                onChange({
+                  quantity: digitsOnly === "" ? "" : Math.max(1, parseInt(digitsOnly, 10)),
+                });
+              }}
+              onBlur={() => {
+                if (line.quantity === "" || line.quantity < 1) onChange({ quantity: 1 });
+              }}
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
+            />
+          </Field>
+          <Field label="Precio por unidad (USD, opcional)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={line.unitPrice}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onChange({ unitPrice: raw === "" ? "" : Math.max(0, Number(raw)) });
+              }}
+              placeholder="0.00"
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+            />
+          </Field>
+        </div>
+
+        <LinkWeightEstimator onWeight={(kg) => onChange({ unitWeightKg: kg })} />
+
+        <Field label="Peso por unidad (kg)">
+          <input
+            type="number"
+            min={0}
+            step="0.1"
+            value={line.unitWeightKg}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onChange({ unitWeightKg: raw === "" ? "" : Math.max(0, Number(raw)) });
+            }}
+            placeholder="0"
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+          <span className="mt-1 block text-xs text-navy-500">
+            Se multiplica por la cantidad — no hace falta que lo calcules vos.
+          </span>
+        </Field>
+      </div>
     </div>
   );
 }
