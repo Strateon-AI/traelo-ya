@@ -46,22 +46,18 @@ export async function POST(request: Request) {
   const total = Number(body.total) || 0;
 
   const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .insert({
-      customer_name: customerName,
-      customer_whatsapp: customerWhatsapp,
-      client_type: clientType,
-      lines,
-      total_weight_kg: totalWeightKg,
-      shipping_cost: shippingCost,
-      commission_cost: commissionCost,
-      total,
-    })
-    .select("id")
-    .single();
+  const { error } = await supabase.from("orders").insert({
+    customer_name: customerName,
+    customer_whatsapp: customerWhatsapp,
+    client_type: clientType,
+    lines,
+    total_weight_kg: totalWeightKg,
+    shipping_cost: shippingCost,
+    commission_cost: commissionCost,
+    total,
+  });
 
-  if (error || !data) {
+  if (error) {
     console.error("[registrar-pedido] insert error:", error);
     return NextResponse.json({ error: "No pudimos guardar el pedido." }, { status: 500 });
   }
@@ -70,7 +66,7 @@ export async function POST(request: Request) {
     console.error("[registrar-pedido] telegram error:", err);
   });
 
-  return NextResponse.json({ ok: true, id: data.id as string });
+  return NextResponse.json({ ok: true });
 }
 
 async function notifyTelegram(order: {
