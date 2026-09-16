@@ -50,13 +50,17 @@ async function fetchDirect(url: string): Promise<ProductPageResult> {
     if (res.status === 403 || res.status === 429 || res.status === 503) {
       return { ok: false, text: null, blocked: true };
     }
-    if (!res.ok) return { ok: false, text: null, blocked: false };
+    if (!res.ok) {
+      console.error("[productPage] fetchDirect respondió", res.status);
+      return { ok: false, text: null, blocked: false };
+    }
 
     const html = await res.text();
     if (looksBlocked(html)) return { ok: false, text: null, blocked: true };
 
     return { ok: true, text: extractRelevantText(html), blocked: false };
-  } catch {
+  } catch (err) {
+    console.error("[productPage] fetchDirect error:", err instanceof Error ? err.message : err);
     return { ok: false, text: null, blocked: false };
   }
 }
@@ -77,13 +81,17 @@ async function fetchViaScraper(
 
   try {
     const res = await fetchWithTimeout(endpoint, {});
-    if (!res.ok) return { ok: false, text: null, blocked: res.status === 403 };
+    if (!res.ok) {
+      console.error("[productPage] scraper respondió", res.status, (await res.text()).slice(0, 300));
+      return { ok: false, text: null, blocked: res.status === 403 };
+    }
 
     const body = await res.text();
     // Algunos proveedores devuelven JSON estructurado y otros el HTML crudo;
     // en los dos casos el texto plano le sirve al modelo.
     return { ok: true, text: extractRelevantText(body), blocked: false };
-  } catch {
+  } catch (err) {
+    console.error("[productPage] scraper error:", err instanceof Error ? err.message : err);
     return { ok: false, text: null, blocked: false };
   }
 }
