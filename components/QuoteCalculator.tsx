@@ -102,9 +102,18 @@ export function QuoteCalculator({
     );
   }
 
-  const hasWeight = result.totalWeightKg > 0;
   const hasContactInfo = customerName.trim().length > 0 && customerWhatsapp.trim().length > 0;
-  const canSubmit = agreed && hasWeight && hasContactInfo;
+  const allLinesComplete = lines.every(
+    (line) =>
+      line.productName.trim().length > 0 &&
+      typeof line.quantity === "number" &&
+      line.quantity > 0 &&
+      typeof line.unitPrice === "number" &&
+      line.unitPrice > 0 &&
+      typeof line.unitWeightKg === "number" &&
+      line.unitWeightKg > 0
+  );
+  const canSubmit = agreed && allLinesComplete && hasContactInfo;
 
   const whatsappHref = quoteUrl({
     lines: lines.map((line) => ({
@@ -260,10 +269,10 @@ export function QuoteCalculator({
         onClick={handleSubmit}
         disabled={!canSubmit || submitting}
         title={
-          !hasWeight
-            ? "Completa el peso estimado para continuar"
+          !allLinesComplete
+            ? "Completá nombre, cantidad, precio y peso de cada producto para continuar"
             : !hasContactInfo
-              ? "Completa tu nombre y WhatsApp para continuar"
+              ? "Completá tu nombre y WhatsApp para continuar"
               : undefined
         }
         className={`focus-ring mt-4 flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors ${
@@ -315,7 +324,7 @@ function ProductLineFields({
       </div>
 
       <div className="mt-2.5 space-y-3">
-        <Field label="¿Qué producto quieres traer? (opcional)">
+        <Field label="¿Qué producto quieres traer?">
           <input
             type="text"
             list={datalistId}
@@ -350,7 +359,7 @@ function ProductLineFields({
               className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
             />
           </Field>
-          <Field label="Precio por unidad (USD, opcional)">
+          <Field label="Precio por unidad (USD)">
             <input
               type="number"
               min={0}
