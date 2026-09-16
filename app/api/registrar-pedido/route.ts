@@ -104,7 +104,9 @@ async function notifyTelegram(order: {
     body: JSON.stringify({ chat_id: chatId, text }),
   });
 
-  if (!res.ok) {
-    console.error("[registrar-pedido] telegram respondió", res.status, await res.text());
-  }
+  // Telegram a veces devuelve HTTP 200 con {"ok": false, ...} en el body en
+  // vez de un status de error — chequear solo res.ok no alcanza. Logueamos
+  // la respuesta completa (sin el token) para diagnosticar de una.
+  const payload = await res.text();
+  console.log("[registrar-pedido] telegram respuesta:", res.status, payload);
 }
