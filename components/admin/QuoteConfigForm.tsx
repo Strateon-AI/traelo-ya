@@ -10,13 +10,19 @@ export function QuoteConfigForm({ initial }: { initial: QuoteConfig }) {
   const [weightRatePerKg, setWeightRatePerKg] = useState(initial.weightRatePerKg);
   const [commissionPercent, setCommissionPercent] = useState(initial.commissionPercent);
   const [commissionEnabled, setCommissionEnabled] = useState(initial.commissionEnabled);
+  const [volumetricDivisor, setVolumetricDivisor] = useState(initial.volumetricDivisor);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function handleSave() {
     setSaving(true);
     setBanner(null);
-    const result = await updateQuoteConfig({ weightRatePerKg, commissionPercent, commissionEnabled });
+    const result = await updateQuoteConfig({
+      weightRatePerKg,
+      commissionPercent,
+      commissionEnabled,
+      volumetricDivisor,
+    });
     setSaving(false);
     setBanner(
       result.error
@@ -58,6 +64,25 @@ export function QuoteConfigForm({ initial }: { initial: QuoteConfig }) {
           />
         </label>
       </div>
+
+      <label className="mt-4 block">
+        <span className="mb-1.5 block text-sm font-semibold text-navy-800">
+          Divisor volumétrico del courier
+        </span>
+        <input
+          type="number"
+          min={1}
+          step="1"
+          value={volumetricDivisor}
+          onChange={(e) => setVolumetricDivisor(Number(e.target.value) || 0)}
+          className="focus-ring w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm sm:w-1/2"
+        />
+        <span className="mt-1 block text-xs text-navy-500">
+          Se usa para estimar el peso desde el link del producto: (largo × ancho × alto en
+          cm) ÷ este número. Lo define el courier — normalmente 5000 o 6000. Si está mal,
+          todas las cotizaciones salen mal parejo.
+        </span>
+      </label>
 
       <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-2xl border border-surface-200 p-3.5 text-sm">
         <input

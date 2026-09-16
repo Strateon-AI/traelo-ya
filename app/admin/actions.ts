@@ -50,6 +50,7 @@ export async function updateQuoteConfig(input: {
   weightRatePerKg: number;
   commissionPercent: number;
   commissionEnabled: boolean;
+  volumetricDivisor: number;
 }) {
   const { supabase, error } = await requireSession();
   if (error) return { error };
@@ -60,12 +61,35 @@ export async function updateQuoteConfig(input: {
       weight_rate_per_kg: input.weightRatePerKg,
       commission_percent: input.commissionPercent,
       commission_enabled: input.commissionEnabled,
+      volumetric_divisor: input.volumetricDivisor,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
 
   if (dbError) return { error: dbError.message };
   revalidatePath("/");
+  return { error: null };
+}
+
+/**
+ * El peso que marcó la balanza cuando el paquete llegó al almacén. Es el dato
+ * que después permite comparar contra lo que estimó el cotizador y saber si
+ * hay que ajustar el margen.
+ */
+export async function updateMeasuredWeight(id: string, pesoKg: number) {
+  const { supabase, error } = await requireSession();
+  if (error) return { error };
+
+  if (!Number.isFinite(pesoKg) || pesoKg <= 0) {
+    return { error: "El peso tiene que ser mayor a cero." };
+  }
+
+  const { error: dbError } = await supabase
+    .from("weight_estimates")
+    .update({ peso_real_medido_kg: pesoKg, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (dbError) return { error: dbError.message };
   return { error: null };
 }
 

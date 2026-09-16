@@ -7,6 +7,7 @@ import { calculateQuote, formatUsd } from "@/lib/calculator";
 import { quoteUrl } from "@/lib/whatsapp";
 import { WhatsAppGlyph } from "./icons";
 import { BusinessQuoteCard } from "./BusinessQuoteCard";
+import { LinkWeightEstimator } from "./LinkWeightEstimator";
 
 const CLIENT_TYPES: { id: ClientType; label: string; helper: string }[] = [
   { id: "card", label: "Con tu tarjeta", helper: "Sin costo adicional" },
@@ -153,6 +154,8 @@ export function QuoteCalculator({
             />
           </Field>
         </div>
+
+        <LinkWeightEstimator onWeight={(kg) => setWeightKg(kg)} />
 
         <Field label="Peso estimado de todo el pedido (kg)">
           <input

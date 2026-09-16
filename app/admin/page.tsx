@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { listStoredEstimates } from "@/lib/data/weightEstimates";
+import { DEFAULT_VOLUMETRIC_DIVISOR } from "@/lib/weightEstimate";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
@@ -14,13 +16,19 @@ export default async function AdminPage() {
     return <AdminLogin />;
   }
 
-  const [{ data: promo }, { data: quoteConfig }, { data: topProducts }, { data: instagramVideos }] =
-    await Promise.all([
-      supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
-      supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
-      supabase.from("top_products").select("*").order("sort_order", { ascending: true }),
-      supabase.from("instagram_videos").select("*").order("sort_order", { ascending: true }),
-    ]);
+  const [
+    { data: promo },
+    { data: quoteConfig },
+    { data: topProducts },
+    { data: instagramVideos },
+    weightEstimates,
+  ] = await Promise.all([
+    supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
+    supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
+    supabase.from("top_products").select("*").order("sort_order", { ascending: true }),
+    supabase.from("instagram_videos").select("*").order("sort_order", { ascending: true }),
+    listStoredEstimates(),
+  ]);
 
   return (
     <AdminDashboard
@@ -44,6 +52,10 @@ export default async function AdminPage() {
               weightRatePerKg: Number(quoteConfig.weight_rate_per_kg),
               commissionPercent: Number(quoteConfig.commission_percent),
               commissionEnabled: Boolean(quoteConfig.commission_enabled),
+              volumetricDivisor:
+                Number(quoteConfig.volumetric_divisor) > 0
+                  ? Number(quoteConfig.volumetric_divisor)
+                  : DEFAULT_VOLUMETRIC_DIVISOR,
             }
           : null
       }
@@ -61,6 +73,7 @@ export default async function AdminPage() {
         sortOrder: v.sort_order,
         visible: v.visible,
       }))}
+      initialWeightEstimates={weightEstimates}
     />
   );
 }

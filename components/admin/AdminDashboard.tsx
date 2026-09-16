@@ -3,12 +3,19 @@
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import type { Promo, QuoteConfig, InstagramVideo, TopProduct } from "@/lib/types";
+import type {
+  Promo,
+  QuoteConfig,
+  InstagramVideo,
+  StoredWeightEstimate,
+  TopProduct,
+} from "@/lib/types";
 import { signOut } from "@/app/admin/actions";
 import { QuoteConfigForm } from "./QuoteConfigForm";
 import { PromoForm } from "./PromoForm";
 import { TopProductsManager } from "./TopProductsManager";
 import { InstagramVideosManager } from "./InstagramVideosManager";
+import { WeightEstimatesManager } from "./WeightEstimatesManager";
 
 export function AdminDashboard({
   userEmail,
@@ -16,12 +23,14 @@ export function AdminDashboard({
   initialQuoteConfig,
   initialTopProducts,
   initialInstagramVideos,
+  initialWeightEstimates,
 }: {
   userEmail: string;
   initialPromo: Promo | null;
   initialQuoteConfig: QuoteConfig | null;
   initialTopProducts: TopProduct[];
   initialInstagramVideos: InstagramVideo[];
+  initialWeightEstimates: StoredWeightEstimate[];
 }) {
   const router = useRouter();
 
@@ -51,11 +60,19 @@ export function AdminDashboard({
 
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
         <QuoteConfigForm
-          initial={initialQuoteConfig ?? { weightRatePerKg: 28, commissionPercent: 5, commissionEnabled: true }}
+          initial={
+            initialQuoteConfig ?? {
+              weightRatePerKg: 28,
+              commissionPercent: 5,
+              commissionEnabled: true,
+              volumetricDivisor: 5000,
+            }
+          }
         />
         <PromoForm initial={initialPromo} />
         <TopProductsManager initial={initialTopProducts} />
         <InstagramVideosManager initial={initialInstagramVideos} />
+        <WeightEstimatesManager initial={initialWeightEstimates} />
       </div>
     </div>
   );
