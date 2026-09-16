@@ -196,3 +196,20 @@ export async function deleteInstagramVideo(id: string) {
   revalidatePath("/");
   return { error: null };
 }
+
+/**
+ * Estado de seguimiento de cada pedido que entra por el cotizador.
+ * Lo mueve a mano quien atiende desde /admin.
+ */
+export async function updateOrderStatus(id: string, status: "pending" | "contacted" | "completed") {
+  const { supabase, error } = await requireSession();
+  if (error) return { error };
+
+  const { error: dbError } = await supabase
+    .from("orders")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (dbError) return { error: dbError.message };
+  return { error: null };
+}

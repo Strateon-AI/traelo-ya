@@ -49,7 +49,10 @@ export function QuoteCalculator({
 }) {
   const [clientType, setClientType] = useState<ClientType>("card");
   const [lines, setLines] = useState<ProductLine[]>([newLine()]);
+  const [customerName, setCustomerName] = useState("");
+  const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   function updateLine(id: string, patch: Partial<ProductLine>) {
     setLines((prev) => prev.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -100,7 +103,8 @@ export function QuoteCalculator({
   }
 
   const hasWeight = result.totalWeightKg > 0;
-  const canSubmit = agreed && hasWeight;
+  const hasContactInfo = customerName.trim().length > 0 && customerWhatsapp.trim().length > 0;
+  const canSubmit = agreed && hasWeight && hasContactInfo;
 
   const whatsappHref = quoteUrl({
     lines: lines.map((line) => ({
@@ -117,6 +121,37 @@ export function QuoteCalculator({
     shippingCost: result.shippingCost,
     total: result.total,
   });
+
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      await fetch("/api/registrar-pedido", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          customerWhatsapp: customerWhatsapp.trim(),
+          clientType,
+          lines: lines.map((line) => ({
+            productName: line.productName.trim(),
+            quantity: typeof line.quantity === "number" ? line.quantity : 1,
+            unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
+          })),
+          totalWeightKg: result.totalWeightKg,
+          shippingCost: result.shippingCost,
+          commissionCost: result.commissionCost,
+          total: result.total,
+        }),
+      });
+    } catch {
+      // No bloqueamos al cliente si falla el guardado — igual puede mandar
+      // el WhatsApp; el registro en /admin es un plus, no un requisito.
+    } finally {
+      setSubmitting(false);
+      window.open(whatsappHref, "_blank", "noopener,noreferrer");
+    }
+  }
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-card-lg sm:p-7">
@@ -186,6 +221,30 @@ export function QuoteCalculator({
         </p>
       </div>
 
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Tu nombre">
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder="Nombre y apellido"
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+        </Field>
+        <Field label="Tu WhatsApp">
+          <input
+            type="tel"
+            value={customerWhatsapp}
+            onChange={(e) => setCustomerWhatsapp(e.target.value)}
+            placeholder="7XXXXXXX"
+            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+          />
+        </Field>
+      </div>
+      <p className="mt-1.5 text-xs text-navy-500">
+        Lo usamos para escribirte por si no llega tu mensaje de WhatsApp.
+      </p>
+
       <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-navy-800">
         <input
           type="checkbox"
@@ -196,28 +255,26 @@ export function QuoteCalculator({
         Entiendo que esta cotización es solo un estimado.
       </label>
 
-      {canSubmit ? (
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring mt-4 flex items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-whatsapp-700"
-        >
-          <WhatsAppGlyph className="h-4.5 w-4.5" />
-          Enviar cotización por WhatsApp
-        </a>
-      ) : (
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          title="Completa el peso estimado y marca la casilla para continuar"
-          className="mt-4 flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-full bg-whatsapp-600/40 px-6 py-3.5 text-sm font-semibold text-white"
-        >
-          <WhatsAppGlyph className="h-4.5 w-4.5" />
-          Enviar cotización por WhatsApp
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!canSubmit || submitting}
+        title={
+          !hasWeight
+            ? "Completa el peso estimado para continuar"
+            : !hasContactInfo
+              ? "Completa tu nombre y WhatsApp para continuar"
+              : undefined
+        }
+        className={`focus-ring mt-4 flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors ${
+          canSubmit && !submitting
+            ? "cursor-pointer bg-whatsapp-600 hover:bg-whatsapp-700"
+            : "cursor-not-allowed bg-whatsapp-600/40"
+        }`}
+      >
+        <WhatsAppGlyph className="h-4.5 w-4.5" />
+        {submitting ? "Enviando…" : "Enviar cotización por WhatsApp"}
+      </button>
     </div>
   );
 }

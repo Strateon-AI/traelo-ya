@@ -16,6 +16,7 @@ import { PromoForm } from "./PromoForm";
 import { TopProductsManager } from "./TopProductsManager";
 import { InstagramVideosManager } from "./InstagramVideosManager";
 import { WeightEstimatesManager } from "./WeightEstimatesManager";
+import { OrdersManager, type AdminOrder } from "./OrdersManager";
 
 export function AdminDashboard({
   userEmail,
@@ -24,6 +25,7 @@ export function AdminDashboard({
   initialTopProducts,
   initialInstagramVideos,
   initialWeightEstimates,
+  initialOrders,
 }: {
   userEmail: string;
   initialPromo: Promo | null;
@@ -31,6 +33,7 @@ export function AdminDashboard({
   initialTopProducts: TopProduct[];
   initialInstagramVideos: InstagramVideo[];
   initialWeightEstimates: StoredWeightEstimate[];
+  initialOrders: AdminOrder[];
 }) {
   const router = useRouter();
 
@@ -59,6 +62,7 @@ export function AdminDashboard({
       </header>
 
       <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
+        <OrdersManager initial={initialOrders ?? []} />
         <QuoteConfigForm
           initial={
             initialQuoteConfig ?? {

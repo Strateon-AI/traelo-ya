@@ -22,12 +22,14 @@ export default async function AdminPage() {
     { data: topProducts },
     { data: instagramVideos },
     weightEstimates,
+    { data: orders },
   ] = await Promise.all([
     supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
     supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
     supabase.from("top_products").select("*").order("sort_order", { ascending: true }),
     supabase.from("instagram_videos").select("*").order("sort_order", { ascending: true }),
     listStoredEstimates(),
+    supabase.from("orders").select("*").order("created_at", { ascending: false }),
   ]);
 
   return (
@@ -74,6 +76,18 @@ export default async function AdminPage() {
         visible: v.visible,
       }))}
       initialWeightEstimates={weightEstimates}
+      initialOrders={(orders ?? []).map((o) => ({
+        id: o.id,
+        customerName: o.customer_name ?? "",
+        customerWhatsapp: o.customer_whatsapp ?? "",
+        lines: Array.isArray(o.lines) ? o.lines : [],
+        totalWeightKg: Number(o.total_weight_kg) || 0,
+        shippingCost: Number(o.shipping_cost) || 0,
+        commissionCost: Number(o.commission_cost) || 0,
+        total: Number(o.total) || 0,
+        status: o.status ?? "pending",
+        createdAt: o.created_at,
+      }))}
     />
   );
 }
