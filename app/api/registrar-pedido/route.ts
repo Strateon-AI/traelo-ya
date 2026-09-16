@@ -78,6 +78,7 @@ async function notifyTelegram(order: {
 }): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
+  console.log("[registrar-pedido] telegram env:", { hasToken: Boolean(token), hasChatId: Boolean(chatId) });
   if (!token || !chatId) return;
 
   const productLines = order.lines
