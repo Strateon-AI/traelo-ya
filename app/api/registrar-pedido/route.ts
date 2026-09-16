@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No pudimos guardar el pedido." }, { status: 500 });
   }
 
-  notifyTelegram({ customerName, customerWhatsapp, lines, totalWeightKg, total }).catch((err) => {
+  await notifyTelegram({ customerName, customerWhatsapp, lines, totalWeightKg, total }).catch((err) => {
     console.error("[registrar-pedido] telegram error:", err);
   });
 
