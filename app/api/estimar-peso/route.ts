@@ -91,6 +91,7 @@ export async function POST(request: Request) {
   const result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
 
   if (!result.ok || !result.text) {
+    console.error("[estimar-peso] llm error:", result.error);
     return NextResponse.json(
       { error: "No pudimos calcular el peso en este momento." },
       { status: 502 }
