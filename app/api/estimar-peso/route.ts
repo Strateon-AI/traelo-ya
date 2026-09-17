@@ -11,6 +11,7 @@ import { buildWeightPrompt, parseWeightEstimate } from "@/lib/weightEstimate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Freno mínimo de abuso: este endpoint es público y cada llamada que llega al

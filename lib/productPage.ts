@@ -19,7 +19,7 @@ export interface ProductPageResult {
 }
 
 const MAX_CHARS = 14000;
-const TIMEOUT_MS = 12000;
+const TIMEOUT_MS = 25000;
 
 /** Palabras que marcan la parte de la página donde están las medidas. */
 const KEYWORDS =
