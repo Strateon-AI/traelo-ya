@@ -4,18 +4,13 @@ import { useState } from "react";
 import { Link2, Loader2, Sparkles } from "lucide-react";
 import type { WeightEstimate } from "@/lib/types";
 
-/**
- * Pega el link del producto y completa solo el campo de peso del cotizador.
- *
- * El peso que se usa es el MÁXIMO del rango estimado, no el promedio: quedarse
- * corto significa un cliente enojado cuando el paquete se pesa en el almacén,
- * y pasarse significa devolverle la diferencia, que nadie reclama. El error no
- * es simétrico, así que la estimación tampoco va centrada.
- *
- * Cuando no se puede leer la página, no se inventa nada: se avisa y el campo
- * de peso queda para cargar a mano, como funcionaba antes.
- */
-export function LinkWeightEstimator({ onWeight }: { onWeight: (kg: number) => void }) {
+export function LinkWeightEstimator({
+  onWeight,
+  productName,
+}: {
+  onWeight: (kg: number) => void;
+  productName: string;
+}) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [estimate, setEstimate] = useState<WeightEstimate | null>(null);
@@ -32,7 +27,7 @@ export function LinkWeightEstimator({ onWeight }: { onWeight: (kg: number) => vo
       const res = await fetch("/api/estimar-peso", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), productName: productName.trim() }),
       });
       const data = (await res.json()) as { estimate?: WeightEstimate; error?: string };
 

@@ -5,9 +5,13 @@ import {
   isValidProductUrl,
   saveEstimate,
 } from "@/lib/data/weightEstimates";
-import { askModel, llmConfigured } from "@/lib/llm";
+import { askModel, askModelWithSearch, llmConfigured, searchConfigured } from "@/lib/llm";
 import { fetchProductPage } from "@/lib/productPage";
-import { buildWeightPrompt, parseWeightEstimate } from "@/lib/weightEstimate";
+import {
+  buildWeightPrompt,
+  buildWeightSearchPrompt,
+  parseWeightEstimate,
+} from "@/lib/weightEstimate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,9 +48,11 @@ export async function POST(request: Request) {
   }
 
   let url: string;
+  let productName: string;
   try {
-    const body = (await request.json()) as { url?: unknown };
+    const body = (await request.json()) as { url?: unknown; productName?: unknown };
     url = typeof body.url === "string" ? body.url.trim() : "";
+    productName = typeof body.productName === "string" ? body.productName.trim() : "";
   } catch {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
@@ -74,7 +80,27 @@ export async function POST(request: Request) {
 
   // 2. Leer la página del producto.
   const page = await fetchProductPage(url);
-  if (!page.ok || !page.text) {
+  const config = await getQuoteConfig();
+
+  let result;
+  if (page.ok && page.text) {
+    // Camino normal: se pudo leer la página.
+    const prompt = buildWeightPrompt(config.volumetricDivisor);
+    result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
+  } else if (productName && searchConfigured()) {
+    // Fallback: la tienda bloqueó la lectura (Best Buy, eBay…), pero tenemos
+    // el nombre del producto — que ya es un campo obligatorio del cotizador
+    // — así que el modelo busca en la web en vez de depender de esa página
+    // puntual. No importa si el bloqueo fue por captcha, timeout o lo que
+    // sea: mientras haya nombre, se intenta.
+    const searchPrompt = buildWeightSearchPrompt(config.volumetricDivisor);
+    result = await askModelWithSearch(
+      searchPrompt,
+      `PRODUCTO: ${productName}\nTIENDA (no se pudo leer la página): ${url}`
+    );
+  } else {
+    // Sin página legible y sin nombre (o sin Anthropic configurado para
+    // buscar) — acá sí no hay nada más que intentar.
     return NextResponse.json(
       {
         error: page.blocked
@@ -85,11 +111,6 @@ export async function POST(request: Request) {
       { status: 422 }
     );
   }
-
-  // 3. Estimar con el modelo.
-  const config = await getQuoteConfig();
-  const prompt = buildWeightPrompt(config.volumetricDivisor);
-  const result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
 
   if (!result.ok || !result.text) {
     console.error("[estimar-peso] llm error:", result.error);
@@ -107,7 +128,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 4. Guardar para la próxima y para poder comparar después contra el peso real.
+  // 3. Guardar para la próxima y para poder comparar después contra el peso real.
   await saveEstimate(url, estimate);
 
   return NextResponse.json({ estimate, cached: false });

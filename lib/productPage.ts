@@ -67,7 +67,8 @@ async function fetchDirect(url: string): Promise<ProductPageResult> {
 
 /**
  * Formato genérico: `SCRAPER_API_URL` con `{key}` y `{url}` como
- * marcadores. Ejemplo para ScraperAPI:
+ * marcadores (reemplazo global — algunos proveedores necesitan el mismo
+ * marcador más de una vez en la query). Ejemplo para ScraperAPI:
  *   https://api.scraperapi.com?api_key={key}&url={url}
  */
 async function fetchViaScraper(
@@ -76,8 +77,8 @@ async function fetchViaScraper(
   key: string
 ): Promise<ProductPageResult> {
   const endpoint = template
-    .replace("{key}", encodeURIComponent(key))
-    .replace("{url}", encodeURIComponent(url));
+    .replaceAll("{key}", encodeURIComponent(key))
+    .replaceAll("{url}", encodeURIComponent(url));
 
   try {
     const res = await fetchWithTimeout(endpoint, {});
@@ -87,6 +88,11 @@ async function fetchViaScraper(
     }
 
     const body = await res.text();
+    // El scraper puede devolver 200 con una página de bloqueo/captcha
+    // adentro (ZenRows a veces hace esto con Amazon) — el mismo chequeo que
+    // ya se usaba en fetchDirect, antes solo se aplicaba ahí.
+    if (looksBlocked(body)) return { ok: false, text: null, blocked: true };
+
     // Algunos proveedores devuelven JSON estructurado y otros el HTML crudo;
     // en los dos casos el texto plano le sirve al modelo.
     return { ok: true, text: extractRelevantText(body), blocked: false };

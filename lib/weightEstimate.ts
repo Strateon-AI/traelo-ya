@@ -75,6 +75,57 @@ SALIDA
 }`;
 }
 
+/**
+ * Variante del prompt para cuando la tienda no deja leer la página.
+ *
+ * Mismo esquema de salida que `buildWeightPrompt` — por eso
+ * `parseWeightEstimate` sirve para las dos sin cambios — pero acá el modelo
+ * busca el producto por nombre en la web entera en vez de leer una página
+ * puntual. Solo se usa con Anthropic, que es el proveedor con búsqueda web.
+ */
+export function buildWeightSearchPrompt(divisor: number): string {
+  return `Sos el estimador de peso de un servicio de courier de Estados Unidos a Bolivia.
+
+No se pudo leer directamente la página del producto — la tienda bloquea el acceso automatizado. Te doy el NOMBRE DEL PRODUCTO tal como lo escribió el cliente, y el nombre de la tienda. Buscá en la web información sobre este producto (especificaciones del fabricante, la misma publicación en otra tienda, reviews que mencionen el tamaño de la caja de envío, foros) para estimar cuánto va a pesar LA CAJA EN QUE SE ENVÍA, no el producto desnudo.
+
+CONFIGURACIÓN
+- Divisor volumétrico del courier: ${divisor}
+- peso_volumetrico_kg = (largo_cm × ancho_cm × alto_cm) / ${divisor}
+
+CÓMO ESTIMAR — en este orden de prioridad:
+
+1. Si encontrás las medidas o el peso de envío reales de este producto (en el sitio del fabricante, en otra tienda, en una review), usalos.
+   → fuente: "pagina"
+
+2. Si solo encontrás las medidas o el peso del producto sin embalaje, sumale el embalaje. Como referencia: 2-4 cm por lado en productos chicos y livianos; 5-10 cm en electrónica, vidrio o cualquier cosa que viaje con relleno de protección. El peso sube entre 10% y 30%.
+   → fuente: "producto_mas_embalaje"
+
+3. Si no encontrás medidas de ningún lado, estimá por el tipo de producto, comparando con productos equivalentes que conozcas.
+   → fuente: "estimado"
+
+4. Si no lográs identificar qué producto es ni siquiera por el nombre, NO INVENTES.
+   → fuente: "sin_datos", todos los números en null
+
+REGLAS
+- Nunca devuelvas un peso cobrable exacto: siempre un rango mínimo–máximo.
+- El peso cobrable es el MAYOR entre el peso real y el peso volumétrico.
+- El rango tiene que ser realista, no defensivo. No infles por las dudas.
+- Respondé únicamente con el JSON, sin texto alrededor.
+
+SALIDA
+{
+  "producto": "nombre corto",
+  "tienda": "amazon | ebay | walmart | otro",
+  "dimensiones_caja_cm": { "largo": 0, "ancho": 0, "alto": 0 },
+  "peso_real_kg": 0,
+  "peso_volumetrico_kg": 0,
+  "peso_cobrable_kg": { "min": 0, "max": 0 },
+  "fuente": "pagina | producto_mas_embalaje | estimado | sin_datos",
+  "confianza": "alta | media | baja",
+  "nota": "una frase sobre de dónde salió el número, mencionando que se buscó por nombre en vez de leer la página original"
+}`;
+}
+
 export function volumetricWeightKg(
   dims: { largo: number; ancho: number; alto: number },
   divisor: number

@@ -272,7 +272,7 @@ export function QuoteCalculator({
           !allLinesComplete
             ? "Completá nombre, cantidad, precio y peso de cada producto para continuar"
             : !hasContactInfo
-              ? "Completá tu nombre y WhatsApp para continuar"
+              ? "Completa tu nombre y WhatsApp para continuar"
               : undefined
         }
         className={`focus-ring mt-4 flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors ${
@@ -375,7 +375,10 @@ function ProductLineFields({
           </Field>
         </div>
 
-        <LinkWeightEstimator onWeight={(kg) => onChange({ unitWeightKg: kg })} />
+        <LinkWeightEstimator
+          productName={line.productName}
+          onWeight={(kg) => onChange({ unitWeightKg: kg })}
+        />
 
         <Field label="Peso por unidad (kg)">
           <input
