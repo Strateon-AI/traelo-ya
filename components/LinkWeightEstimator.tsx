@@ -91,6 +91,12 @@ export function LinkWeightEstimator({ onWeight }: { onWeight: (kg: number) => vo
         </button>
       </div>
 
+      {loading && (
+        <p className="mt-2 text-xs text-navy-500">
+          Esto puede tardar unos segundos — estamos leyendo la página del producto.
+        </p>
+      )}
+
       {estimate?.pesoCobrableKg && (
         <div className="mt-3 rounded-xl bg-white p-3">
           {estimate.producto && (
