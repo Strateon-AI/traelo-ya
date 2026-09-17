@@ -49,10 +49,16 @@ export async function POST(request: Request) {
 
   let url: string;
   let productName: string;
+  let forceSearch: boolean;
   try {
-    const body = (await request.json()) as { url?: unknown; productName?: unknown };
+    const body = (await request.json()) as {
+      url?: unknown;
+      productName?: unknown;
+      forceSearch?: unknown;
+    };
     url = typeof body.url === "string" ? body.url.trim() : "";
     productName = typeof body.productName === "string" ? body.productName.trim() : "";
+    forceSearch = body.forceSearch === true;
   } catch {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
@@ -78,38 +84,46 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2. Leer la página del producto.
-  const page = await fetchProductPage(url);
   const config = await getQuoteConfig();
-
   let result;
-  if (page.ok && page.text) {
-    // Camino normal: se pudo leer la página.
-    const prompt = buildWeightPrompt(config.volumetricDivisor);
-    result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
-  } else if (productName && searchConfigured()) {
-    // Fallback: la tienda bloqueó la lectura (Best Buy, eBay…), pero tenemos
-    // el nombre del producto — que ya es un campo obligatorio del cotizador
-    // — así que el modelo busca en la web en vez de depender de esa página
-    // puntual. No importa si el bloqueo fue por captcha, timeout o lo que
-    // sea: mientras haya nombre, se intenta.
+
+  if (forceSearch) {
+    // El cliente ya vio que no pudimos leer la página y nos dio una
+    // descripción más completa a propósito — no tiene sentido reintentar el
+    // fetch (ya sabemos que falla), vamos directo a la búsqueda.
+    if (!productName || !searchConfigured()) {
+      return NextResponse.json(
+        { error: "Hace falta una descripción del producto para poder buscarlo." },
+        { status: 400 }
+      );
+    }
     const searchPrompt = buildWeightSearchPrompt(config.volumetricDivisor);
     result = await askModelWithSearch(
       searchPrompt,
       `PRODUCTO: ${productName}\nTIENDA (no se pudo leer la página): ${url}`
     );
   } else {
-    // Sin página legible y sin nombre (o sin Anthropic configurado para
-    // buscar) — acá sí no hay nada más que intentar.
-    return NextResponse.json(
-      {
-        error: page.blocked
-          ? "Esa tienda no nos deja leer la página automáticamente."
-          : "No pudimos leer la página del producto.",
-        blocked: page.blocked,
-      },
-      { status: 422 }
-    );
+    // 2. Leer la página del producto — intento único y barato, sin
+    // proxies/JS premium: eso multiplica el costo por 25 en ZenRows y la
+    // mayoría de las tiendas (Amazon, Walmart, PlayStation directo) andan
+    // bien sin eso. Si falla, se lo decimos al cliente y le pedimos más
+    // detalle en vez de gastar de más reintentando automático.
+    const page = await fetchProductPage(url);
+    if (page.ok && page.text) {
+      const prompt = buildWeightPrompt(config.volumetricDivisor);
+      result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
+    } else {
+      return NextResponse.json(
+        {
+          error: page.blocked
+            ? "Esa tienda no nos deja leer la página automáticamente."
+            : "No pudimos leer la página del producto.",
+          blocked: page.blocked,
+          canRetryWithDetail: searchConfigured(),
+        },
+        { status: 422 }
+      );
+    }
   }
 
   if (!result.ok || !result.text) {
