@@ -158,8 +158,8 @@ export function LinkWeightEstimator({
             No pudimos acceder a esa página automáticamente.
           </p>
           <p className="mt-1 text-xs leading-relaxed text-navy-600">
-            Contanos más sobre el producto (marca, modelo, talla, color) y lo buscamos
-            igual — mientras más específico, mejor sale la estimación.
+            Para continuar con tu cotización, necesitamos estos datos del producto: marca,
+            modelo, talla y color (si aplica).
           </p>
           <input
             type="text"

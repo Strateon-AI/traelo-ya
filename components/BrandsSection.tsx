@@ -1,6 +1,5 @@
-import { Phone } from "lucide-react";
-import { WhatsAppGlyph } from "./icons";
-import { WHATSAPP_DISPLAY_NUMBER, genericContactUrl } from "@/lib/whatsapp";
+import { ArrowRight, Phone } from "lucide-react";
+import { WHATSAPP_DISPLAY_NUMBER } from "@/lib/whatsapp";
 
 type Brand = { name: string; iconUrl?: string };
 
@@ -69,13 +68,11 @@ export function BrandsSection() {
               Escríbenos por WhatsApp y cotiza sin compromiso.
             </p>
             <a
-              href={genericContactUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#cotizador"
               className="focus-ring mt-5 flex items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-whatsapp-700"
             >
-              <WhatsAppGlyph className="h-4.5 w-4.5" />
-              Hablar por WhatsApp
+              Cotizar ahora
+              <ArrowRight className="h-4.5 w-4.5" />
             </a>
             <a
               href={`tel:+591${WHATSAPP_DISPLAY_NUMBER}`}

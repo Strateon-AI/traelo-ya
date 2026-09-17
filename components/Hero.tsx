@@ -1,7 +1,5 @@
 import { ArrowRight, Headphones, ShieldCheck, ShoppingCart, Truck as TruckIcon } from "lucide-react";
 import { HeroBackground } from "./HeroBackground";
-import { WhatsAppGlyph } from "./icons";
-import { WHATSAPP_DISPLAY_NUMBER, genericContactUrl } from "@/lib/whatsapp";
 import type { ProductSuggestion, QuoteConfig } from "@/lib/types";
 import { QuoteCalculator } from "./QuoteCalculator";
 
@@ -47,13 +45,10 @@ export function Hero({ config, calculatorProducts }: { config: QuoteConfig; calc
 
           <div className="mt-8">
             <a
-              href={genericContactUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#cotizador"
               className="focus-ring inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-7 py-4 text-base font-semibold text-white shadow-card transition-colors hover:bg-whatsapp-700 sm:w-auto"
             >
-              <WhatsAppGlyph className="h-5 w-5" />
-              Cotiza ahora por WhatsApp {WHATSAPP_DISPLAY_NUMBER}
+              Cotiza ahora
               <ArrowRight className="h-5 w-5" />
             </a>
           </div>

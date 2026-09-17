@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import type { Promo } from "@/lib/types";
-import { WhatsAppGlyph } from "./icons";
-import { genericContactUrl } from "@/lib/whatsapp";
 
 // Se recuerda en sessionStorage (no localStorage): que no vuelva a
 // aparecer en la misma sesión del navegador, pero sí la próxima vez que
@@ -82,14 +81,15 @@ export function PromoModal({ promo }: { promo: Promo }) {
               {promo.description}
             </p>
           )}
+          {/* Cierra el modal antes de saltar al ancla: si el overlay queda
+              abierto, el cliente no ve el cotizador al que lo mandamos. */}
           <a
-            href={genericContactUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#cotizador"
+            onClick={close}
             className="focus-ring mt-5 inline-flex items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-whatsapp-700"
           >
-            <WhatsAppGlyph className="h-4.5 w-4.5" />
             {promo.ctaText}
+            <ArrowRight className="h-4.5 w-4.5" />
           </a>
         </div>
       </div>
