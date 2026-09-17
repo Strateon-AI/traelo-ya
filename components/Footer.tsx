@@ -1,6 +1,6 @@
 import { Globe2, Headphones, ShieldCheck, Truck } from "lucide-react";
 import { Logo } from "./Logo";
-import { FacebookGlyph, InstagramGlyph, TikTokGlyph } from "./icons";
+import { InstagramGlyph, TikTokGlyph } from "./icons";
 
 const HIGHLIGHTS = [
   { icon: Truck, label: "Envíos rápidos" },
@@ -9,11 +9,11 @@ const HIGHLIGHTS = [
   { icon: Globe2, label: "Entregas en todo Bolivia" },
 ];
 
-// TODO: reemplazar por las URLs reales de las redes de Tráelo Ya.
+// Facebook queda fuera a propósito hasta tener la cuenta real: un ícono que
+// no lleva a ningún lado es peor que no mostrarlo.
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "#", Icon: InstagramGlyph },
-  { label: "Facebook", href: "#", Icon: FacebookGlyph },
-  { label: "TikTok", href: "#", Icon: TikTokGlyph },
+  { label: "Instagram", href: "https://www.instagram.com/traelo.ya.bo", Icon: InstagramGlyph },
+  { label: "TikTok", href: "https://www.tiktok.com/@traelo.ya.bo", Icon: TikTokGlyph },
 ];
 
 export function Footer() {
