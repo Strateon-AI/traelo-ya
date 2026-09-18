@@ -106,6 +106,12 @@ export function LinkWeightEstimator({
   }
 
   const aproximado = estimate !== null && estimate.fuente !== "pagina";
+  const promedioAplicado =
+    estimate !== null &&
+    estimate.pesoRealKg !== null &&
+    estimate.pesoVolumetricoKg !== null &&
+    estimate.pesoRealKg > 0 &&
+    estimate.pesoVolumetricoKg / estimate.pesoRealKg >= 3;
 
   return (
     <div className="rounded-2xl border border-brand-blue-500/25 bg-brand-blue-100/30 p-3.5">
@@ -200,6 +206,25 @@ export function LinkWeightEstimator({
               {estimate.pesoCobrableKg.min} a {estimate.pesoCobrableKg.max} kg
             </span>
           </p>
+
+          {promedioAplicado && estimate.pesoRealKg !== null && estimate.pesoVolumetricoKg !== null && (
+            <div className="mt-2 rounded-lg bg-brand-blue-100/40 p-2.5 text-xs text-navy-700">
+              <p className="font-semibold text-navy-800">
+                Este producto pesa poco pero ocupa mucho espacio, así que se cobra el
+                promedio entre los dos:
+              </p>
+              <p className="mt-1">Peso real: {estimate.pesoRealKg} kg</p>
+              <p>Peso volumétrico: {estimate.pesoVolumetricoKg} kg</p>
+              <p className="font-semibold">
+                Promedio: {Math.round(((estimate.pesoRealKg + estimate.pesoVolumetricoKg) / 2) * 100) / 100} kg
+              </p>
+              <p className="mt-1 text-navy-500">
+                El peso estimado de arriba parte de ese promedio, con un pequeño margen
+                hasta que se pese el paquete en el almacén.
+              </p>
+            </div>
+          )}
+
           <p className="mt-1 text-xs text-navy-500">
             {aproximado
               ? "Es un aproximado: la tienda no publica las medidas del paquete. Podés ajustarlo abajo."
