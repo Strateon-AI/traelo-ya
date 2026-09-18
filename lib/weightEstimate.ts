@@ -59,6 +59,10 @@ REGLAS
 - El peso cobrable es el MAYOR entre el peso real y el peso volumétrico.
 - El rango tiene que ser realista, no defensivo. No infles por las dudas:
   el margen comercial lo aplica el sistema después, aparte.
+- Si el peso volumétrico supera 3 veces el peso real, se cobra el promedio
+  entre ambos en vez del volumétrico completo — así lo maneja el proveedor de
+  courier para no sobrecargar piezas chicas y pesadas en cajas grandes.
+  Cuando pase esto, mencionalo en la "nota".
 - Respondé únicamente con el JSON, sin texto alrededor.
 
 SALIDA
@@ -110,6 +114,10 @@ REGLAS
 - Nunca devuelvas un peso cobrable exacto: siempre un rango mínimo–máximo.
 - El peso cobrable es el MAYOR entre el peso real y el peso volumétrico.
 - El rango tiene que ser realista, no defensivo. No infles por las dudas.
+- Si el peso volumétrico supera 3 veces el peso real, se cobra el promedio
+  entre ambos en vez del volumétrico completo — así lo maneja el proveedor de
+  courier para no sobrecargar piezas chicas y pesadas en cajas grandes.
+  Cuando pase esto, mencionalo en la "nota".
 - Respondé únicamente con el JSON, sin texto alrededor.
 
 SALIDA
@@ -138,6 +146,43 @@ export function volumetricWeightKg(
  * El modelo a veces envuelve el JSON en ```json … ``` aunque se le pida que
  * no lo haga. Se limpia antes de parsear en vez de fallar por eso.
  */
+/**
+ * Regla del courier de Tráelo Ya: una pieza chica y pesada dentro de una caja
+ * grande no se cobra por el volumétrico completo. Cuando el volumétrico es 3
+ * veces o más el peso real, se cobra el promedio entre los dos.
+ *
+ * Ejemplo del cliente: 2 kg reales en una caja de 15 kg volumétricos (7,5x)
+ * se cobran como (2 + 15) / 2 = 8,5 kg, no 15.
+ */
+const FACTOR_CAJA_GRANDE = 3;
+
+function usaPromedioPorCajaGrande(
+  pesoRealKg: number | null,
+  pesoVolumetricoKg: number | null
+): boolean {
+  if (!pesoRealKg || !pesoVolumetricoKg) return false;
+  return pesoVolumetricoKg >= pesoRealKg * FACTOR_CAJA_GRANDE;
+}
+
+function basePesoCobrable(
+  pesoRealKg: number | null,
+  pesoVolumetricoKg: number | null
+): number {
+  const real = pesoRealKg ?? 0;
+  const volumetrico = pesoVolumetricoKg ?? 0;
+
+  if (usaPromedioPorCajaGrande(pesoRealKg, pesoVolumetricoKg)) {
+    return round2((real + volumetrico) / 2);
+  }
+  return Math.max(real, volumetrico);
+}
+
+/** Mismo margen de siempre alrededor del valor base. */
+function rangoDesdeBase(base: number): { min: number; max: number } | null {
+  if (base <= 0) return null;
+  return { min: round2(base * 0.9), max: round2(base * 1.15) };
+}
+
 export function parseWeightEstimate(raw: string, divisor: number): WeightEstimate | null {
   const cleaned = raw
     .trim()
@@ -181,11 +226,16 @@ export function parseWeightEstimate(raw: string, divisor: number): WeightEstimat
   const pesoVolumetricoKg = dims ? volumetricWeightKg(dims, divisor) : asNumber(obj.peso_volumetrico_kg);
 
   const rango = asRange(obj.peso_cobrable_kg);
-  const cobrableBase = Math.max(pesoRealKg ?? 0, pesoVolumetricoKg ?? 0);
+  const cobrableBase = basePesoCobrable(pesoRealKg, pesoVolumetricoKg);
+  const aplicaPromedio = usaPromedioPorCajaGrande(pesoRealKg, pesoVolumetricoKg);
 
-  const pesoCobrableKg =
-    rango ??
-    (cobrableBase > 0 ? { min: round2(cobrableBase * 0.9), max: round2(cobrableBase * 1.15) } : null);
+  // Cuando aplica la regla del promedio se descarta el rango que propuso el
+  // modelo: ese rango está anclado al volumétrico completo, que es justamente
+  // lo que el courier NO cobra en este caso. En el caso normal se respeta el
+  // rango del modelo como siempre.
+  const pesoCobrableKg = aplicaPromedio
+    ? rangoDesdeBase(cobrableBase)
+    : rango ?? rangoDesdeBase(cobrableBase);
 
   return {
     producto: asText(obj.producto),
