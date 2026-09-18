@@ -23,14 +23,10 @@ export function urlKey(rawUrl: string): string {
   }
 }
 
-export function isValidProductUrl(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
+// La validación real (protocolo + lista blanca de tiendas) vive en
+// lib/productUrl.ts, que es también quien resuelve los links cortos. Se
+// reexporta acá para no romper a quien ya la importaba desde este módulo.
+export { isValidProductUrl } from "@/lib/productUrl";
 
 /** Si el link ya se cotizó antes, se reusa: sale al instante y no gasta consulta. */
 export async function findCachedEstimate(rawUrl: string): Promise<WeightEstimate | null> {

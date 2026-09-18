@@ -20,72 +20,23 @@ export interface ProductPageResult {
 
 const MAX_CHARS = 14000;
 const TIMEOUT_MS = 25000;
-const SHORT_LINK_TIMEOUT_MS = 8000;
-
-/** Dominios de links cortos que Amazon genera desde la app al compartir un producto. */
-const SHORT_LINK_HOSTS = new Set(["a.co", "amzn.to"]);
-
-function isShortLink(url: string): boolean {
-  try {
-    return SHORT_LINK_HOSTS.has(new URL(url).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Los links cortos (a.co, amzn.to) no están protegidos — son solo una
- * redirección — pero pasarlos tal cual al scraper le agrega un salto extra
- * que puede fallar antes de llegar siquiera a la página real. Los resolvemos
- * acá con un pedido liviano y sin gastar el scraper, y de ahí en más se
- * trabaja con el link completo de Amazon como si el cliente lo hubiera
- * pegado directo.
- */
-async function resolveShortLink(url: string): Promise<string> {
-  let current = url;
-  for (let i = 0; i < 5; i++) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), SHORT_LINK_TIMEOUT_MS);
-      let res: Response;
-      try {
-        res = await fetch(current, { redirect: "manual", signal: controller.signal });
-      } finally {
-        clearTimeout(timer);
-      }
-
-      if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get("location");
-        if (!location) break;
-        current = new URL(location, current).toString();
-        continue;
-      }
-      break;
-    } catch (err) {
-      console.error(
-        "[productPage] resolveShortLink error:",
-        err instanceof Error ? err.message : err
-      );
-      break;
-    }
-  }
-  return current;
-}
-
 /** Palabras que marcan la parte de la página donde están las medidas. */
 const KEYWORDS =
   /(package dimension|product dimension|item dimension|shipping weight|item weight|dimensiones|peso del art|peso del prod|weight|dimension)/i;
 
+/**
+ * Recibe el link ya resuelto y validado por lib/productUrl.ts — la ruta hace
+ * eso antes de mirar la caché, así el link corto y el completo del mismo
+ * producto comparten entrada.
+ */
 export async function fetchProductPage(url: string): Promise<ProductPageResult> {
-  const resolvedUrl = isShortLink(url) ? await resolveShortLink(url) : url;
-
   const scraperUrl = process.env.SCRAPER_API_URL;
   const scraperKey = process.env.SCRAPER_API_KEY;
 
   if (scraperUrl && scraperKey) {
-    return fetchViaScraper(resolvedUrl, scraperUrl, scraperKey);
+    return fetchViaScraper(url, scraperUrl, scraperKey);
   }
-  return fetchDirect(resolvedUrl);
+  return fetchDirect(url);
 }
 
 async function fetchDirect(url: string): Promise<ProductPageResult> {

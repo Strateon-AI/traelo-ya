@@ -7,6 +7,7 @@ import {
 } from "@/lib/data/weightEstimates";
 import { askModel, askModelWithSearch, llmConfigured, searchConfigured } from "@/lib/llm";
 import { fetchProductPage } from "@/lib/productPage";
+import { ALLOWED_STORES_LABEL, resolveProductUrl } from "@/lib/productUrl";
 import {
   buildWeightPrompt,
   buildWeightSearchPrompt,
@@ -64,11 +65,27 @@ export async function POST(request: Request) {
   }
 
   if (!isValidProductUrl(url)) {
-    return NextResponse.json({ error: "Ese link no parece válido." }, { status: 400 });
+    return NextResponse.json(
+      { error: `Por ahora solo podemos leer links de ${ALLOWED_STORES_LABEL}.` },
+      { status: 400 }
+    );
+  }
+
+  // Los links cortos (a.co, amzn.to) se resuelven ANTES de mirar la caché,
+  // para que el link corto y el completo del mismo producto caigan en la
+  // misma entrada. Si la redirección termina fuera de las tiendas
+  // permitidas, no se sigue: es el mismo chequeo que el de arriba, aplicado
+  // al destino real.
+  const resolvedUrl = await resolveProductUrl(url);
+  if (!resolvedUrl) {
+    return NextResponse.json(
+      { error: `Ese link no lleva a una tienda que podamos leer (${ALLOWED_STORES_LABEL}).` },
+      { status: 400 }
+    );
   }
 
   // 1. Caché: si ya se cotizó este producto, sale instantáneo y gratis.
-  const cached = await findCachedEstimate(url);
+  const cached = await findCachedEstimate(resolvedUrl);
   if (cached) {
     return NextResponse.json({ estimate: cached, cached: true });
   }
@@ -100,7 +117,7 @@ export async function POST(request: Request) {
     const searchPrompt = buildWeightSearchPrompt(config.volumetricDivisor);
     result = await askModelWithSearch(
       searchPrompt,
-      `PRODUCTO: ${productName}\nTIENDA (no se pudo leer la página): ${url}`
+      `PRODUCTO: ${productName}\nTIENDA (no se pudo leer la página): ${resolvedUrl}`
     );
   } else {
     // 2. Leer la página del producto — intento único y barato, sin
@@ -108,10 +125,10 @@ export async function POST(request: Request) {
     // mayoría de las tiendas (Amazon, Walmart, PlayStation directo) andan
     // bien sin eso. Si falla, se lo decimos al cliente y le pedimos más
     // detalle en vez de gastar de más reintentando automático.
-    const page = await fetchProductPage(url);
+    const page = await fetchProductPage(resolvedUrl);
     if (page.ok && page.text) {
       const prompt = buildWeightPrompt(config.volumetricDivisor);
-      result = await askModel(prompt, `LINK: ${url}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
+      result = await askModel(prompt, `LINK: ${resolvedUrl}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
     } else {
       return NextResponse.json(
         {
@@ -143,7 +160,7 @@ export async function POST(request: Request) {
   }
 
   // 3. Guardar para la próxima y para poder comparar después contra el peso real.
-  await saveEstimate(url, estimate);
+  await saveEstimate(resolvedUrl, estimate);
 
   return NextResponse.json({ estimate, cached: false });
 }
