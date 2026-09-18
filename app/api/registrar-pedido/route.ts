@@ -44,6 +44,7 @@ export async function POST(request: Request) {
   const shippingCost = Number(body.shippingCost) || 0;
   const commissionCost = Number(body.commissionCost) || 0;
   const total = Number(body.total) || 0;
+  const orderCode = `TY-${Math.floor(10000 + Math.random() * 90000)}`;
 
   const supabase = createPublicClient();
   const { error } = await supabase.from("orders").insert({
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     shipping_cost: shippingCost,
     commission_cost: commissionCost,
     total,
+    order_code: orderCode,
   });
 
   if (error) {
@@ -62,11 +64,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No pudimos guardar el pedido." }, { status: 500 });
   }
 
-  await notifyTelegram({ customerName, customerWhatsapp, lines, totalWeightKg, total }).catch((err) => {
+  // El await no es opcional: en serverless, una promesa sin esperar se congela
+  // cuando la función devuelve la respuesta, y la notificación nunca sale.
+  await notifyTelegram({
+    customerName,
+    customerWhatsapp,
+    lines,
+    totalWeightKg,
+    total,
+    orderCode,
+  }).catch((err) => {
     console.error("[registrar-pedido] telegram error:", err);
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, orderCode });
 }
 
 async function notifyTelegram(order: {
@@ -75,6 +86,7 @@ async function notifyTelegram(order: {
   lines: OrderLineInput[];
   totalWeightKg: number;
   total: number;
+  orderCode: string;
 }): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -88,6 +100,7 @@ async function notifyTelegram(order: {
 
   const text = [
     "🆕 Nuevo pedido en Tráelo Ya",
+    `Código: ${order.orderCode}`,
     "",
     `Cliente: ${order.customerName}`,
     `WhatsApp: ${order.customerWhatsapp}`,

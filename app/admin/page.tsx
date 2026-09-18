@@ -78,6 +78,7 @@ export default async function AdminPage() {
       initialWeightEstimates={weightEstimates}
       initialOrders={(orders ?? []).map((o) => ({
         id: o.id,
+        orderCode: o.order_code ?? undefined,
         customerName: o.customer_name ?? "",
         customerWhatsapp: o.customer_whatsapp ?? "",
         lines: Array.isArray(o.lines) ? o.lines : [],

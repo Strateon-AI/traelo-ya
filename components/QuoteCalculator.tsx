@@ -53,6 +53,7 @@ export function QuoteCalculator({
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [lastOrderCode, setLastOrderCode] = useState<string | null>(null);
 
   function updateLine(id: string, patch: Partial<ProductLine>) {
     setLines((prev) => prev.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -115,27 +116,32 @@ export function QuoteCalculator({
   );
   const canSubmit = agreed && allLinesComplete && hasContactInfo;
 
-  const whatsappHref = quoteUrl({
-    lines: lines.map((line) => ({
-      productName: line.productName.trim(),
-      quantity: typeof line.quantity === "number" ? line.quantity : 1,
-      unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
-    })),
-    clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
-    isBuyForYou,
-    commissionEnabled: config.commissionEnabled,
-    commissionPercent: config.commissionPercent,
-    commissionCost: result.commissionCost,
-    totalWeightKg: result.totalWeightKg,
-    shippingCost: result.shippingCost,
-    total: result.total,
-  });
+  function buildWhatsappHref(orderCode?: string) {
+    return quoteUrl({
+      lines: lines.map((line) => ({
+        productName: line.productName.trim(),
+        quantity: typeof line.quantity === "number" ? line.quantity : 1,
+        unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
+      })),
+      clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
+      isBuyForYou,
+      commissionEnabled: config.commissionEnabled,
+      commissionPercent: config.commissionPercent,
+      commissionCost: result.commissionCost,
+      totalWeightKg: result.totalWeightKg,
+      shippingCost: result.shippingCost,
+      total: result.total,
+      orderCode,
+    });
+  }
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
+    setLastOrderCode(null);
+    let orderCode: string | undefined;
     try {
-      await fetch("/api/registrar-pedido", {
+      const res = await fetch("/api/registrar-pedido", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -153,12 +159,15 @@ export function QuoteCalculator({
           total: result.total,
         }),
       });
+      const data = (await res.json().catch(() => null)) as { orderCode?: string } | null;
+      orderCode = data?.orderCode;
     } catch {
       // No bloqueamos al cliente si falla el guardado — igual puede mandar
       // el WhatsApp; el registro en /admin es un plus, no un requisito.
     } finally {
       setSubmitting(false);
-      window.open(whatsappHref, "_blank", "noopener,noreferrer");
+      if (orderCode) setLastOrderCode(orderCode);
+      window.open(buildWhatsappHref(orderCode), "_blank", "noopener,noreferrer");
     }
   }
 
@@ -226,7 +235,8 @@ export function QuoteCalculator({
         <p className="text-xs leading-relaxed text-amber-900">
           Este valor es un estimado. El peso y costo final se confirmarán una vez que el
           paquete sea recepcionado en nuestro almacén y se verifique el peso real y el
-          peso volumétrico.
+          peso volumétrico. Si la tienda divide tu compra en varios paquetes, el costo
+          final puede variar según cómo lleguen.
         </p>
       </div>
 
@@ -284,6 +294,13 @@ export function QuoteCalculator({
         <WhatsAppGlyph className="h-4.5 w-4.5" />
         {submitting ? "Enviando…" : "Enviar cotización por WhatsApp"}
       </button>
+
+      {lastOrderCode && (
+        <p className="mt-3 text-center text-xs font-medium text-navy-600">
+          ✅ Cotización <span className="font-bold text-navy-900">{lastOrderCode}</span> registrada
+          — mandanos el WhatsApp para confirmarla.
+        </p>
+      )}
     </div>
   );
 }
@@ -304,6 +321,7 @@ function ProductLineFields({
   onRemove: () => void;
 }) {
   const datalistId = `producto-sugerencias-${index}`;
+  const [showWeightHelp, setShowWeightHelp] = useState(false);
 
   return (
     <div className="rounded-2xl border border-surface-200 p-3.5">
@@ -396,6 +414,23 @@ function ProductLineFields({
           <span className="mt-1 block text-xs text-navy-500">
             Se multiplica por la cantidad — no hace falta que lo calcules vos.
           </span>
+
+          <button
+            type="button"
+            onClick={() => setShowWeightHelp((prev) => !prev)}
+            className="focus-ring mt-1.5 text-xs font-semibold text-brand-blue-600 hover:underline"
+          >
+            {showWeightHelp ? "Ocultar referencia" : "¿No sabés cuánto pesa?"}
+          </button>
+          {showWeightHelp && (
+            <ul className="mt-1.5 space-y-0.5 rounded-lg bg-surface-50 p-2.5 text-xs text-navy-600">
+              <li>📱 Celular con caja: 0,3 a 0,5 kg</li>
+              <li>👟 Zapatillas: 1 a 1,5 kg</li>
+              <li>👕 Ropa (una prenda): 0,2 a 0,4 kg</li>
+              <li>💻 Laptop: 1,5 a 2,5 kg</li>
+              <li className="text-navy-400">Son referencias generales — el peso real varía por producto.</li>
+            </ul>
+          )}
         </Field>
       </div>
     </div>

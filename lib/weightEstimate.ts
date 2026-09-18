@@ -154,7 +154,7 @@ export function volumetricWeightKg(
  * Ejemplo del cliente: 2 kg reales en una caja de 15 kg volumétricos (7,5x)
  * se cobran como (2 + 15) / 2 = 8,5 kg, no 15.
  */
-const FACTOR_CAJA_GRANDE = 3;
+export const FACTOR_CAJA_GRANDE = 3;
 
 function usaPromedioPorCajaGrande(
   pesoRealKg: number | null,

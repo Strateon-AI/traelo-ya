@@ -14,6 +14,7 @@ export interface AdminOrderLine {
 
 export interface AdminOrder {
   id: string;
+  orderCode?: string;
   customerName: string;
   customerWhatsapp: string;
   lines: AdminOrderLine[];
@@ -68,7 +69,14 @@ export function OrdersManager({ initial }: { initial: AdminOrder[] }) {
           <div key={order.id} className="rounded-2xl border border-surface-200 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-semibold text-navy-900">{order.customerName}</p>
+                <p className="font-semibold text-navy-900">
+                  {order.customerName}
+                  {order.orderCode && (
+                    <span className="ml-2 rounded-full bg-navy-100 px-2 py-0.5 text-xs font-bold text-navy-700">
+                      {order.orderCode}
+                    </span>
+                  )}
+                </p>
                 <p className="text-sm text-navy-600">{order.customerWhatsapp}</p>
                 <p className="mt-0.5 text-xs text-navy-500">
                   {new Date(order.createdAt).toLocaleString("es-BO")}

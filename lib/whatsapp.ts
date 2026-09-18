@@ -35,10 +35,16 @@ export interface QuoteMessageInput {
   totalWeightKg: number;
   shippingCost: number;
   total: number;
+  orderCode?: string;
 }
 
 export function buildQuoteMessage(input: QuoteMessageInput): string {
   const lines = ["Hola Tráelo Ya 👋", "Quiero solicitar una cotización.", ""];
+
+  if (input.orderCode) {
+    lines.push(`Código de cotización: ${input.orderCode}`);
+    lines.push("");
+  }
 
   const namedLines = input.lines.filter((line) => line.productName.trim().length > 0);
   if (namedLines.length > 0) {

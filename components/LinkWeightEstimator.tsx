@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Loader2, Search, Sparkles } from "lucide-react";
+import { Info, Link2, Loader2, Search, Sparkles } from "lucide-react";
 import type { WeightEstimate } from "@/lib/types";
+import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
 
 /**
  * Pega el link del producto y completa solo el campo de peso del cotizador.
@@ -32,6 +33,7 @@ export function LinkWeightEstimator({
   const [error, setError] = useState<string | null>(null);
   const [needsDetail, setNeedsDetail] = useState(false);
   const [detailText, setDetailText] = useState("");
+  const [showVolumetricInfo, setShowVolumetricInfo] = useState(false);
 
   async function handleEstimate() {
     if (!url.trim() || loading) return;
@@ -111,7 +113,7 @@ export function LinkWeightEstimator({
     estimate.pesoRealKg !== null &&
     estimate.pesoVolumetricoKg !== null &&
     estimate.pesoRealKg > 0 &&
-    estimate.pesoVolumetricoKg / estimate.pesoRealKg >= 3;
+    estimate.pesoVolumetricoKg / estimate.pesoRealKg >= FACTOR_CAJA_GRANDE;
 
   return (
     <div className="rounded-2xl border border-brand-blue-500/25 bg-brand-blue-100/30 p-3.5">
@@ -119,10 +121,27 @@ export function LinkWeightEstimator({
         <Sparkles className="h-4 w-4 text-brand-blue-600" />
         ¿Tenés el link del producto?
       </span>
-      <p className="mb-2.5 text-xs leading-relaxed text-navy-600">
+      <p className="mb-1 text-xs leading-relaxed text-navy-600">
         Pegalo y calculamos el peso de envío solo — incluye el tamaño de la caja, que es
         lo que realmente define el costo.
       </p>
+
+      <button
+        type="button"
+        onClick={() => setShowVolumetricInfo((prev) => !prev)}
+        className="focus-ring mb-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-blue-600 hover:underline"
+      >
+        <Info className="h-3.5 w-3.5" />
+        ¿Qué es el peso volumétrico?
+      </button>
+      {showVolumetricInfo && (
+        <p className="mb-2.5 rounded-lg bg-white p-2.5 text-xs leading-relaxed text-navy-600">
+          Algunas cajas ocupan mucho espacio aunque pesen poco. Por eso el transporte
+          internacional se calcula con el que sea mayor entre el peso real y el peso
+          volumétrico (un cálculo basado en las medidas de la caja) — así se cobra el
+          espacio real que ocupa en el avión, no solo el peso.
+        </p>
+      )}
 
       <div className="flex gap-2">
         <div className="relative flex-1">
