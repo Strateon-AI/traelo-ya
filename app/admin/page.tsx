@@ -23,6 +23,7 @@ export default async function AdminPage() {
     { data: instagramVideos },
     weightEstimates,
     { data: orders },
+    { data: flatRateCategories },
   ] = await Promise.all([
     supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
     supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
@@ -30,6 +31,7 @@ export default async function AdminPage() {
     supabase.from("instagram_videos").select("*").order("sort_order", { ascending: true }),
     listStoredEstimates(),
     supabase.from("orders").select("*").order("created_at", { ascending: false }),
+    supabase.from("flat_rate_categories").select("*").order("sort_order", { ascending: true }),
   ]);
 
   return (
@@ -88,6 +90,11 @@ export default async function AdminPage() {
         total: Number(o.total) || 0,
         status: o.status ?? "pending",
         createdAt: o.created_at,
+      }))}
+      initialFlatRateCategories={(flatRateCategories ?? []).map((c) => ({
+        id: c.id,
+        label: c.label,
+        priceUsd: Number(c.price_usd) || 0,
       }))}
     />
   );

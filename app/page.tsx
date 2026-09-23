@@ -1,6 +1,7 @@
 import { getQuoteConfig } from "@/lib/data/quoteConfig";
 import { getTopProducts } from "@/lib/data/topProducts";
 import { getInstagramVideos } from "@/lib/data/instagram";
+import { getFlatRateCategories } from "@/lib/data/flatRateCategories";
 import { Header } from "@/components/Header";
 import { PromoBanner } from "@/components/PromoBanner";
 import { Hero } from "@/components/Hero";
@@ -18,10 +19,11 @@ import { Footer } from "@/components/Footer";
 export const revalidate = 60;
 
 export default async function Home() {
-  const [config, topProducts, instagramVideos] = await Promise.all([
+  const [config, topProducts, instagramVideos, flatRateCategories] = await Promise.all([
     getQuoteConfig(),
     getTopProducts(),
     getInstagramVideos(),
+    getFlatRateCategories(),
   ]);
 
   const calculatorProducts = topProducts.map((p) => ({ id: p.id, name: p.name }));
@@ -31,7 +33,11 @@ export default async function Home() {
       <Header />
       <PromoBanner />
       <main className="flex-1">
-        <Hero config={config} calculatorProducts={calculatorProducts} />
+        <Hero
+          config={config}
+          calculatorProducts={calculatorProducts}
+          flatRateCategories={flatRateCategories}
+        />
         <TrackingSection />
         <HowItWorks />
         <TopProducts products={topProducts} />

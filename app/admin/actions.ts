@@ -213,3 +213,21 @@ export async function updateOrderStatus(id: string, status: "pending" | "contact
   if (dbError) return { error: dbError.message };
   return { error: null };
 }
+
+/**
+ * Precio fijo por categoría (celular, laptop, etc.). Lo revisan mes a mes
+ * desde /admin: reemplaza el cálculo por peso para esas líneas.
+ */
+export async function updateFlatRateCategory(id: string, priceUsd: number) {
+  const { supabase, error } = await requireSession();
+  if (error) return { error };
+
+  const { error: dbError } = await supabase
+    .from("flat_rate_categories")
+    .update({ price_usd: priceUsd, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (dbError) return { error: dbError.message };
+  revalidatePath("/");
+  return { error: null };
+}

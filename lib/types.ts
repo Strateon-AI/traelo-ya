@@ -17,6 +17,12 @@ export type WeightEstimateSource =
   | "sin_datos";
 
 /** Estimación de peso de envío a partir del link de un producto. */
+export interface FlatRateCategory {
+  id: string;
+  label: string;
+  priceUsd: number;
+}
+
 export interface WeightEstimate {
   producto: string | null;
   tienda: string | null;

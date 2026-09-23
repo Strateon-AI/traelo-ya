@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Calculator, Plus, Trash2 } from "lucide-react";
-import type { ClientType, ProductSuggestion, QuoteConfig } from "@/lib/types";
+import type { ClientType, FlatRateCategory, ProductSuggestion, QuoteConfig } from "@/lib/types";
 import { calculateQuote, formatUsd } from "@/lib/calculator";
 import { quoteUrl } from "@/lib/whatsapp";
 import { WhatsAppGlyph } from "./icons";
@@ -22,8 +22,12 @@ const CLIENT_TYPE_MESSAGE_LABEL: Record<ClientType, string> = {
   business: "Comercio / pedido grande",
 };
 
+/** "otro" = se cotiza por peso, como cualquier producto sin categoría fija. */
+const OTRO_CATEGORY_ID = "otro";
+
 interface ProductLine {
   id: string;
+  categoryId: string;
   productName: string;
   quantity: number | "";
   unitPrice: number | "";
@@ -33,6 +37,7 @@ interface ProductLine {
 function newLine(): ProductLine {
   return {
     id: typeof crypto !== "undefined" ? crypto.randomUUID() : String(Math.random()),
+    categoryId: OTRO_CATEGORY_ID,
     productName: "",
     quantity: 1,
     unitPrice: "",
@@ -43,9 +48,11 @@ function newLine(): ProductLine {
 export function QuoteCalculator({
   config,
   products,
+  categories,
 }: {
   config: QuoteConfig;
   products: ProductSuggestion[];
+  categories: FlatRateCategory[];
 }) {
   const [clientType, setClientType] = useState<ClientType>("card");
   const [lines, setLines] = useState<ProductLine[]>([newLine()]);
@@ -54,6 +61,10 @@ export function QuoteCalculator({
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrderCode, setLastOrderCode] = useState<string | null>(null);
+
+  function findCategory(id: string): FlatRateCategory | undefined {
+    return categories.find((c) => c.id === id);
+  }
 
   function updateLine(id: string, patch: Partial<ProductLine>) {
     setLines((prev) => prev.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -79,11 +90,19 @@ export function QuoteCalculator({
 
   const result = calculateQuote({
     isBuyForYou,
-    lines: lines.map((line) => ({
-      quantity: typeof line.quantity === "number" ? line.quantity : 1,
-      unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
-      unitWeightKg: typeof line.unitWeightKg === "number" ? line.unitWeightKg : 0,
-    })),
+    lines: lines.map((line) => {
+      const category = findCategory(line.categoryId);
+      const quantity = typeof line.quantity === "number" ? line.quantity : 1;
+      const unitPrice = typeof line.unitPrice === "number" ? line.unitPrice : 0;
+      if (category) {
+        return { quantity, unitPrice, flatRateUsd: category.priceUsd };
+      }
+      return {
+        quantity,
+        unitPrice,
+        unitWeightKg: typeof line.unitWeightKg === "number" ? line.unitWeightKg : 0,
+      };
+    }),
     ratePerKg: config.weightRatePerKg,
     commissionPercent: config.commissionPercent,
     commissionEnabled: config.commissionEnabled,
@@ -104,25 +123,37 @@ export function QuoteCalculator({
   }
 
   const hasContactInfo = customerName.trim().length > 0 && customerWhatsapp.trim().length > 0;
-  const allLinesComplete = lines.every(
-    (line) =>
+  const allLinesComplete = lines.every((line) => {
+    const baseOk =
       line.productName.trim().length > 0 &&
       typeof line.quantity === "number" &&
       line.quantity > 0 &&
       typeof line.unitPrice === "number" &&
-      line.unitPrice > 0 &&
-      typeof line.unitWeightKg === "number" &&
-      line.unitWeightKg > 0
-  );
+      line.unitPrice > 0;
+    if (!baseOk) return false;
+    // Con categoría de tarifa fija no hace falta peso — esa línea no se
+    // cotiza por kg. Sin categoría (Otro), el peso sigue siendo obligatorio.
+    if (findCategory(line.categoryId)) return true;
+    return typeof line.unitWeightKg === "number" && line.unitWeightKg > 0;
+  });
   const canSubmit = agreed && allLinesComplete && hasContactInfo;
 
-  function buildWhatsappHref(orderCode?: string) {
-    return quoteUrl({
-      lines: lines.map((line) => ({
+  function messageLines() {
+    return lines.map((line) => {
+      const category = findCategory(line.categoryId);
+      return {
         productName: line.productName.trim(),
         quantity: typeof line.quantity === "number" ? line.quantity : 1,
         unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
-      })),
+        flatRateLabel: category?.label,
+        flatRateUsd: category?.priceUsd,
+      };
+    });
+  }
+
+  function buildWhatsappHref(orderCode?: string) {
+    return quoteUrl({
+      lines: messageLines(),
       clientTypeLabel: CLIENT_TYPE_MESSAGE_LABEL[clientType],
       isBuyForYou,
       commissionEnabled: config.commissionEnabled,
@@ -130,6 +161,7 @@ export function QuoteCalculator({
       commissionCost: result.commissionCost,
       totalWeightKg: result.totalWeightKg,
       shippingCost: result.shippingCost,
+      flatRateCost: result.flatRateCost,
       total: result.total,
       orderCode,
     });
@@ -148,13 +180,10 @@ export function QuoteCalculator({
           customerName: customerName.trim(),
           customerWhatsapp: customerWhatsapp.trim(),
           clientType,
-          lines: lines.map((line) => ({
-            productName: line.productName.trim(),
-            quantity: typeof line.quantity === "number" ? line.quantity : 1,
-            unitPrice: typeof line.unitPrice === "number" ? line.unitPrice : 0,
-          })),
+          lines: messageLines(),
           totalWeightKg: result.totalWeightKg,
           shippingCost: result.shippingCost,
+          flatRateCost: result.flatRateCost,
           commissionCost: result.commissionCost,
           total: result.total,
         }),
@@ -198,6 +227,7 @@ export function QuoteCalculator({
             index={index}
             line={line}
             products={products}
+            categories={categories}
             canRemove={lines.length > 1}
             onChange={(patch) => updateLine(line.id, patch)}
             onRemove={() => removeLine(line.id)}
@@ -213,9 +243,16 @@ export function QuoteCalculator({
           Agregar otro producto
         </button>
 
-        <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
-        <SummaryRow label="Peso total estimado" value={`${result.totalWeightKg} kg`} />
-        <SummaryRow label="Costo de envío" value={formatUsd(result.shippingCost)} />
+        {result.totalWeightKg > 0 && (
+          <>
+            <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
+            <SummaryRow label="Peso total estimado" value={`${result.totalWeightKg} kg`} />
+            <SummaryRow label="Costo de envío (por peso)" value={formatUsd(result.shippingCost)} />
+          </>
+        )}
+        {result.hasFlatRate && (
+          <SummaryRow label="Tarifa fija (por categoría)" value={formatUsd(result.flatRateCost)} />
+        )}
         {result.hasCommission && (
           <SummaryRow
             label={`Comisión de compra (${config.commissionPercent}%)`}
@@ -280,7 +317,7 @@ export function QuoteCalculator({
         disabled={!canSubmit || submitting}
         title={
           !allLinesComplete
-            ? "Completá nombre, cantidad, precio y peso de cada producto para continuar"
+            ? "Completá nombre, cantidad, precio y peso (o categoría) de cada producto para continuar"
             : !hasContactInfo
               ? "Completa tu nombre y WhatsApp para continuar"
               : undefined
@@ -309,6 +346,7 @@ function ProductLineFields({
   index,
   line,
   products,
+  categories,
   canRemove,
   onChange,
   onRemove,
@@ -316,12 +354,15 @@ function ProductLineFields({
   index: number;
   line: ProductLine;
   products: ProductSuggestion[];
+  categories: FlatRateCategory[];
   canRemove: boolean;
   onChange: (patch: Partial<ProductLine>) => void;
   onRemove: () => void;
 }) {
   const datalistId = `producto-sugerencias-${index}`;
   const [showWeightHelp, setShowWeightHelp] = useState(false);
+  const selectedCategory = categories.find((c) => c.id === line.categoryId);
+  const isFlatRate = Boolean(selectedCategory);
 
   return (
     <div className="rounded-2xl border border-surface-200 p-3.5">
@@ -358,6 +399,23 @@ function ProductLineFields({
           </datalist>
         </Field>
 
+        {categories.length > 0 && (
+          <Field label="¿Qué tipo de producto es?">
+            <select
+              value={line.categoryId}
+              onChange={(e) => onChange({ categoryId: e.target.value })}
+              className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900"
+            >
+              <option value={OTRO_CATEGORY_ID}>Otro (se cotiza por peso)</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label} — tarifa fija US$ {c.priceUsd.toFixed(0)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Cantidad">
             <input
@@ -393,45 +451,59 @@ function ProductLineFields({
           </Field>
         </div>
 
-        <LinkWeightEstimator
-          productName={line.productName}
-          onWeight={(kg) => onChange({ unitWeightKg: kg })}
-        />
+        {isFlatRate && selectedCategory ? (
+          <div className="rounded-xl bg-brand-blue-100/40 p-3 text-sm text-navy-700">
+            <p className="font-semibold text-navy-800">
+              {selectedCategory.label}: tarifa fija de {formatUsd(selectedCategory.priceUsd)} por
+              unidad.
+            </p>
+            <p className="mt-1 text-xs text-navy-500">
+              No se calcula por peso — este monto ya es el costo de envío para esta categoría.
+            </p>
+          </div>
+        ) : (
+          <>
+            <LinkWeightEstimator
+              productName={line.productName}
+              onWeight={(kg) => onChange({ unitWeightKg: kg })}
+            />
 
-        <Field label="Peso por unidad (kg)">
-          <input
-            type="number"
-            min={0}
-            step="0.1"
-            value={line.unitWeightKg}
-            onChange={(e) => {
-              const raw = e.target.value;
-              onChange({ unitWeightKg: raw === "" ? "" : Math.max(0, Number(raw)) });
-            }}
-            placeholder="0"
-            className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
-          />
-          <span className="mt-1 block text-xs text-navy-500">
-            Se multiplica por la cantidad — no hace falta que lo calcules vos.
-          </span>
+            <Field label="Peso por unidad (kg)">
+              <input
+                type="number"
+                min={0}
+                step="0.1"
+                value={line.unitWeightKg}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  onChange({ unitWeightKg: raw === "" ? "" : Math.max(0, Number(raw)) });
+                }}
+                placeholder="0"
+                className="focus-ring w-full rounded-xl border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 placeholder:text-navy-400"
+              />
+              <span className="mt-1 block text-xs text-navy-500">
+                Se multiplica por la cantidad — no hace falta que lo calcules vos.
+              </span>
 
-          <button
-            type="button"
-            onClick={() => setShowWeightHelp((prev) => !prev)}
-            className="focus-ring mt-1.5 text-xs font-semibold text-brand-blue-600 hover:underline"
-          >
-            {showWeightHelp ? "Ocultar referencia" : "¿No sabés cuánto pesa?"}
-          </button>
-          {showWeightHelp && (
-            <ul className="mt-1.5 space-y-0.5 rounded-lg bg-surface-50 p-2.5 text-xs text-navy-600">
-              <li>📱 Celular con caja: 0,3 a 0,5 kg</li>
-              <li>👟 Zapatillas: 1 a 1,5 kg</li>
-              <li>👕 Ropa (una prenda): 0,2 a 0,4 kg</li>
-              <li>💻 Laptop: 1,5 a 2,5 kg</li>
-              <li className="text-navy-400">Son referencias generales — el peso real varía por producto.</li>
-            </ul>
-          )}
-        </Field>
+              <button
+                type="button"
+                onClick={() => setShowWeightHelp((prev) => !prev)}
+                className="focus-ring mt-1.5 text-xs font-semibold text-brand-blue-600 hover:underline"
+              >
+                {showWeightHelp ? "Ocultar referencia" : "¿No sabés cuánto pesa?"}
+              </button>
+              {showWeightHelp && (
+                <ul className="mt-1.5 space-y-0.5 rounded-lg bg-surface-50 p-2.5 text-xs text-navy-600">
+                  <li>📱 Celular con caja: 0,3 a 0,5 kg</li>
+                  <li>👟 Zapatillas: 1 a 1,5 kg</li>
+                  <li>👕 Ropa (una prenda): 0,2 a 0,4 kg</li>
+                  <li>💻 Laptop: 1,5 a 2,5 kg</li>
+                  <li className="text-navy-400">Son referencias generales — el peso real varía por producto.</li>
+                </ul>
+              )}
+            </Field>
+          </>
+        )}
       </div>
     </div>
   );

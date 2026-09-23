@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import type {
+  FlatRateCategory,
   Promo,
   QuoteConfig,
   InstagramVideo,
@@ -12,6 +13,7 @@ import type {
 } from "@/lib/types";
 import { signOut } from "@/app/admin/actions";
 import { QuoteConfigForm } from "./QuoteConfigForm";
+import { FlatRateCategoriesForm } from "./FlatRateCategoriesForm";
 import { PromoForm } from "./PromoForm";
 import { TopProductsManager } from "./TopProductsManager";
 import { InstagramVideosManager } from "./InstagramVideosManager";
@@ -26,6 +28,7 @@ export function AdminDashboard({
   initialInstagramVideos,
   initialWeightEstimates,
   initialOrders,
+  initialFlatRateCategories,
 }: {
   userEmail: string;
   initialPromo: Promo | null;
@@ -34,6 +37,7 @@ export function AdminDashboard({
   initialInstagramVideos: InstagramVideo[];
   initialWeightEstimates: StoredWeightEstimate[];
   initialOrders: AdminOrder[];
+  initialFlatRateCategories: FlatRateCategory[];
 }) {
   const router = useRouter();
 
@@ -73,6 +77,7 @@ export function AdminDashboard({
             }
           }
         />
+        <FlatRateCategoriesForm initial={initialFlatRateCategories ?? []} />
         <PromoForm initial={initialPromo} />
         <TopProductsManager initial={initialTopProducts} />
         <InstagramVideosManager initial={initialInstagramVideos} />

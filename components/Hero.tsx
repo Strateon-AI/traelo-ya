@@ -1,6 +1,6 @@
 import { ArrowRight, Headphones, ShieldCheck, ShoppingCart, Truck as TruckIcon } from "lucide-react";
 import { HeroBackground } from "./HeroBackground";
-import type { ProductSuggestion, QuoteConfig } from "@/lib/types";
+import type { FlatRateCategory, ProductSuggestion, QuoteConfig } from "@/lib/types";
 import { QuoteCalculator } from "./QuoteCalculator";
 
 const BENEFITS = [
@@ -10,7 +10,15 @@ const BENEFITS = [
   { icon: Headphones, label: "Atención personalizada" },
 ];
 
-export function Hero({ config, calculatorProducts }: { config: QuoteConfig; calculatorProducts: ProductSuggestion[] }) {
+export function Hero({
+  config,
+  calculatorProducts,
+  flatRateCategories,
+}: {
+  config: QuoteConfig;
+  calculatorProducts: ProductSuggestion[];
+  flatRateCategories: FlatRateCategory[];
+}) {
   return (
     <section id="inicio" className="relative overflow-hidden">
       <HeroBackground />
@@ -56,7 +64,7 @@ export function Hero({ config, calculatorProducts }: { config: QuoteConfig; calc
         </div>
 
         <div id="cotizador" className="relative lg:pt-2">
-          <QuoteCalculator config={config} products={calculatorProducts} />
+          <QuoteCalculator config={config} products={calculatorProducts} categories={flatRateCategories} />
         </div>
       </div>
     </section>

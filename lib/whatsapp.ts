@@ -23,6 +23,9 @@ export interface QuoteLineMessageInput {
   productName: string;
   quantity: number;
   unitPrice: number;
+  /** Etiqueta de la categoría con tarifa fija (ej. "Celular nuevo"), si aplica. */
+  flatRateLabel?: string;
+  flatRateUsd?: number;
 }
 
 export interface QuoteMessageInput {
@@ -34,6 +37,7 @@ export interface QuoteMessageInput {
   commissionCost: number;
   totalWeightKg: number;
   shippingCost: number;
+  flatRateCost: number;
   total: number;
   orderCode?: string;
 }
@@ -51,7 +55,10 @@ export function buildQuoteMessage(input: QuoteMessageInput): string {
     lines.push("Productos:");
     namedLines.forEach((line) => {
       const priceText = line.unitPrice > 0 ? ` — US$ ${line.unitPrice.toFixed(2)} c/u` : "";
-      lines.push(`• ${line.productName} (x${line.quantity})${priceText}`);
+      const flatRateText = line.flatRateLabel
+        ? ` — ${line.flatRateLabel} (tarifa fija US$ ${(line.flatRateUsd ?? 0).toFixed(2)} c/u)`
+        : "";
+      lines.push(`• ${line.productName} (x${line.quantity})${priceText}${flatRateText}`);
     });
     lines.push("");
   }
@@ -66,8 +73,13 @@ export function buildQuoteMessage(input: QuoteMessageInput): string {
       );
     }
   }
-  lines.push(`Peso total estimado: ${input.totalWeightKg} kg`);
-  lines.push(`Envío estimado: US$ ${input.shippingCost.toFixed(2)}`);
+  if (input.totalWeightKg > 0) {
+    lines.push(`Peso total estimado (productos por peso): ${input.totalWeightKg} kg`);
+    lines.push(`Envío por peso: US$ ${input.shippingCost.toFixed(2)}`);
+  }
+  if (input.flatRateCost > 0) {
+    lines.push(`Tarifa fija (productos por categoría): US$ ${input.flatRateCost.toFixed(2)}`);
+  }
   lines.push(`Total estimado: US$ ${input.total.toFixed(2)}`);
   lines.push("");
   lines.push(

@@ -42,6 +42,7 @@ export async function POST(request: Request) {
   const clientType = typeof body.clientType === "string" ? body.clientType : "card";
   const totalWeightKg = Number(body.totalWeightKg) || 0;
   const shippingCost = Number(body.shippingCost) || 0;
+  const flatRateCost = Number(body.flatRateCost) || 0;
   const commissionCost = Number(body.commissionCost) || 0;
   const total = Number(body.total) || 0;
   const orderCode = `TY-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     lines,
     total_weight_kg: totalWeightKg,
     shipping_cost: shippingCost,
+    flat_rate_cost: flatRateCost,
     commission_cost: commissionCost,
     total,
     order_code: orderCode,
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
     customerWhatsapp,
     lines,
     totalWeightKg,
+    flatRateCost,
     total,
     orderCode,
   }).catch((err) => {
@@ -85,6 +88,7 @@ async function notifyTelegram(order: {
   customerWhatsapp: string;
   lines: OrderLineInput[];
   totalWeightKg: number;
+  flatRateCost: number;
   total: number;
   orderCode: string;
 }): Promise<void> {
@@ -106,6 +110,7 @@ async function notifyTelegram(order: {
     `WhatsApp: ${order.customerWhatsapp}`,
     productLines ? `\nProductos:\n${productLines}` : "",
     `\nPeso total: ${order.totalWeightKg} kg`,
+    order.flatRateCost > 0 ? `Tarifas fijas: US$ ${order.flatRateCost.toFixed(2)}` : "",
     `Total estimado: US$ ${order.total.toFixed(2)}`,
   ]
     .filter((line) => line !== "")
