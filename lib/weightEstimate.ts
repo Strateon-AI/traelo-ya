@@ -35,6 +35,17 @@ CONFIGURACIÓN
 - Divisor volumétrico del courier: ${divisor}
 - peso_volumetrico_kg = (largo_cm × ancho_cm × alto_cm) / ${divisor}
 
+DATOS REALES DE REFERENCIA (de envíos ya pesados por este courier, Miami→Bolivia):
+- Celular con caja: 0,4–0,6 kg
+- Funda/case: 0,3–0,5 kg
+- Tablet: 1–1,2 kg
+- Zapatos/zapatillas: 1–1,5 kg
+- Ropa (una prenda): 0,3–0,8 kg
+- Cosméticos: 0,4–1,3 kg
+- Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
+
+Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.
+
 CÓMO ESTIMAR — en este orden de prioridad:
 
 1. Si la página trae "Package Dimensions", "Shipping Weight" o equivalente,
@@ -95,6 +106,17 @@ No se pudo leer directamente la página del producto — la tienda bloquea el ac
 CONFIGURACIÓN
 - Divisor volumétrico del courier: ${divisor}
 - peso_volumetrico_kg = (largo_cm × ancho_cm × alto_cm) / ${divisor}
+
+DATOS REALES DE REFERENCIA (de envíos ya pesados por este courier, Miami→Bolivia):
+- Celular con caja: 0,4–0,6 kg
+- Funda/case: 0,3–0,5 kg
+- Tablet: 1–1,2 kg
+- Zapatos/zapatillas: 1–1,5 kg
+- Ropa (una prenda): 0,3–0,8 kg
+- Cosméticos: 0,4–1,3 kg
+- Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
+
+Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.
 
 CÓMO ESTIMAR — en este orden de prioridad:
 

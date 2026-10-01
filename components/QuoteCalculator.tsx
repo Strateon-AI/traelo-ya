@@ -494,11 +494,15 @@ function ProductLineFields({
               </button>
               {showWeightHelp && (
                 <ul className="mt-1.5 space-y-0.5 rounded-lg bg-surface-50 p-2.5 text-xs text-navy-600">
-                  <li>📱 Celular con caja: 0,3 a 0,5 kg</li>
+                  <li>📱 Celular con caja: 0,4 a 0,6 kg</li>
+                  <li>🔲 Funda / case: 0,3 a 0,5 kg</li>
+                  <li>📲 Tablet: 1 a 1,2 kg</li>
                   <li>👟 Zapatillas: 1 a 1,5 kg</li>
-                  <li>👕 Ropa (una prenda): 0,2 a 0,4 kg</li>
+                  <li>👕 Ropa (una prenda): 0,3 a 0,8 kg</li>
+                  <li>💄 Cosméticos: 0,4 a 1,3 kg</li>
+                  <li>🔌 Accesorios chicos (memorias, cables): 0,15 a 0,65 kg</li>
                   <li>💻 Laptop: 1,5 a 2,5 kg</li>
-                  <li className="text-navy-400">Son referencias generales — el peso real varía por producto.</li>
+                  <li className="text-navy-400">Basado en envíos reales — el peso puede variar por producto puntual.</li>
                 </ul>
               )}
             </Field>
