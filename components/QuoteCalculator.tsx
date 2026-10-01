@@ -499,10 +499,10 @@ function ProductLineFields({
                   <li>📲 Tablet: 1 a 1,2 kg</li>
                   <li>👟 Zapatillas: 1 a 1,5 kg</li>
                   <li>👕 Ropa (una prenda): 0,3 a 0,8 kg</li>
-                  <li>💄 Cosméticos: 0,4 a 1,3 kg</li>
+                  <li>💄 Cosméticos: 0,15 a 1,3 kg</li>
                   <li>🔌 Accesorios chicos (memorias, cables): 0,15 a 0,65 kg</li>
                   <li>💻 Laptop: 1,5 a 2,5 kg</li>
-                  <li className="text-navy-400">Basado en envíos reales — el peso puede variar por producto puntual.</li>
+                  <li className="text-navy-400">Es el peso real del producto — si la caja es grande para lo que pesa, el costo final puede ser mayor (se cobra por volumen).</li>
                 </ul>
               )}
             </Field>
