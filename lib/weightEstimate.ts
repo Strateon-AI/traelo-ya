@@ -28,7 +28,7 @@ export const DEFAULT_REFERENCE_DATA = `DATOS REALES DE REFERENCIA (de envíos ya
 - Tablet: 1–1,2 kg
 - Zapatos/zapatillas: 1–1,5 kg
 - Ropa (una prenda): 0,3–0,8 kg
-- Cosméticos: 0,4–1,3 kg
+- Cosméticos: 0,15–1,3 kg
 - Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
 
 Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.`;

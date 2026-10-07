@@ -36,7 +36,8 @@ export function WarehouseReceiptsManager({ initial }: { initial: WarehouseReceip
         const res = await fetch("/api/admin/procesar-recibo", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ documentBase64, mediaType: file.type, fileName: file.name }),
+          // El nombre del archivo no se manda: puede traer el nombre de la persona.
+          body: JSON.stringify({ documentBase64, mediaType: file.type }),
         });
         // Un 413 de Vercel no trae JSON: sin el catch, res.json() tira y se
         // pierde el motivo.

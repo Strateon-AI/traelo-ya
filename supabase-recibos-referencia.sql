@@ -24,7 +24,10 @@ returns table (
 language sql
 stable
 security definer
-set search_path = public
+-- search_path vacío: con security definer, evita que alguien cree una tabla
+-- con el mismo nombre en otro schema y la función la lea en vez de la real.
+-- La consulta usa nombres completos (public.…), así que no lo necesita.
+set search_path = ''
 as $$
   select w.product_description, w.weight_kg, w.dimensions_cm
   from public.warehouse_receipt_items w

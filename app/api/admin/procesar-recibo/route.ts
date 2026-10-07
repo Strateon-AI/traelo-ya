@@ -37,16 +37,10 @@ export async function POST(request: Request) {
 
   let documentBase64: string;
   let mediaType: string;
-  let fileName: string;
   try {
-    const body = (await request.json()) as {
-      documentBase64?: unknown;
-      mediaType?: unknown;
-      fileName?: unknown;
-    };
+    const body = (await request.json()) as { documentBase64?: unknown; mediaType?: unknown };
     documentBase64 = typeof body.documentBase64 === "string" ? body.documentBase64 : "";
     mediaType = typeof body.mediaType === "string" ? body.mediaType : "";
-    fileName = typeof body.fileName === "string" && body.fileName.trim() ? body.fileName.trim() : "recibo.pdf";
   } catch {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
@@ -81,6 +75,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // El nombre que se guarda NO sale del archivo que subió el admin: los
+  // recibos de KGE vienen nombrados con la persona que recibe el paquete
+  // (Recibo_W-115680_Nombre_Apellido_.pdf). Se arma con el número de recibo
+  // que leyó la IA, que es lo único que sirve para ubicar el documento.
+  const uploadedAt = Date.now();
   const { items: inserted, error } = await insertWarehouseReceiptItems(
     supabase,
     items.map((item) => ({
@@ -88,7 +87,7 @@ export async function POST(request: Request) {
       productDescription: item.descripcion,
       weightKg: item.pesoKg,
       dimensionsCm: item.dimensionesCm,
-      sourceFileName: fileName,
+      sourceFileName: storedFileName(item.numeroRecibo, uploadedAt),
     }))
   );
 
@@ -98,4 +97,10 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ inserted: inserted.length, items: inserted });
+}
+
+/** Solo caracteres de un número de recibo (W-115680); cualquier otra cosa se descarta. */
+function storedFileName(receiptNumber: string | null, uploadedAt: number): string {
+  const safe = (receiptNumber ?? "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 32);
+  return `recibo-${safe || "sin-numero"}-${uploadedAt}.pdf`;
 }
