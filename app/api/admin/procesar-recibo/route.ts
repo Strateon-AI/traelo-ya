@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { insertWarehouseReceiptItems } from "@/lib/data/warehouseReceipts";
+import {
+  existingReceiptItemKeys,
+  insertWarehouseReceiptItems,
+  receiptItemKey,
+} from "@/lib/data/warehouseReceipts";
 import { askModelWithDocument, searchConfigured } from "@/lib/llm";
 import { buildReceiptExtractionPrompt, parseReceiptExtraction } from "@/lib/weightEstimate";
 
@@ -75,6 +79,30 @@ export async function POST(request: Request) {
     );
   }
 
+  // Duplicados: se descartan los bultos que ya estaban cargados (mismo
+  // número + descripción + peso). Si eran todos, el recibo entero ya estaba.
+  // Un bulto sin número de recibo no se puede comparar y se inserta igual.
+  const receiptNumbers = Array.from(
+    new Set(items.map((item) => item.numeroRecibo).filter((n): n is string => !!n))
+  );
+  const existingKeys = await existingReceiptItemKeys(supabase, receiptNumbers);
+  const newItems = existingKeys
+    ? items.filter(
+        (item) =>
+          !item.numeroRecibo ||
+          !existingKeys.has(receiptItemKey(item.numeroRecibo, item.descripcion, item.pesoKg))
+      )
+    : items;
+  const skipped = items.length - newItems.length;
+
+  if (newItems.length === 0) {
+    const label = receiptNumbers.length > 0 ? `El recibo ${receiptNumbers.join(", ")}` : "Ese recibo";
+    return NextResponse.json(
+      { error: `${label} ya estaba cargado — no se subió de nuevo.`, alreadyLoaded: true },
+      { status: 409 }
+    );
+  }
+
   // El nombre que se guarda NO sale del archivo que subió el admin: los
   // recibos de KGE vienen nombrados con la persona que recibe el paquete
   // (Recibo_W-115680_Nombre_Apellido_.pdf). Se arma con el número de recibo
@@ -82,7 +110,7 @@ export async function POST(request: Request) {
   const uploadedAt = Date.now();
   const { items: inserted, error } = await insertWarehouseReceiptItems(
     supabase,
-    items.map((item) => ({
+    newItems.map((item) => ({
       receiptNumber: item.numeroRecibo,
       productDescription: item.descripcion,
       weightKg: item.pesoKg,
@@ -96,7 +124,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se pudieron guardar los ítems del recibo." }, { status: 500 });
   }
 
-  return NextResponse.json({ inserted: inserted.length, items: inserted });
+  return NextResponse.json({ inserted: inserted.length, items: inserted, skipped });
 }
 
 /** Solo caracteres de un número de recibo (W-115680); cualquier otra cosa se descarta. */

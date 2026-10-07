@@ -91,6 +91,52 @@ export async function insertWarehouseReceiptItems(
   return { items: ((data ?? []) as ReceiptRow[]).map(mapRow), error: null };
 }
 
+/**
+ * Clave para detectar un bulto ya cargado: número de recibo + descripción +
+ * peso. El número solo NO alcanza: KGE consolida varios clientes bajo un
+ * mismo número (W-115680 llegó en cinco PDFs distintos, uno por persona,
+ * cada uno con bultos diferentes). Deduplicar por número habría rechazado
+ * cuatro de esos cinco como "ya cargados".
+ *
+ * La descripción se normaliza (minúsculas, sin acentos ni signos) porque la
+ * escribe la IA y puede variar un poco entre lecturas del mismo PDF.
+ */
+export function receiptItemKey(
+  receiptNumber: string,
+  productDescription: string,
+  weightKg: number
+): string {
+  const desc = productDescription
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return `${receiptNumber.trim().toUpperCase()}|${desc}|${Number(weightKg).toFixed(2)}`;
+}
+
+/**
+ * Claves de los bultos ya guardados para esos números de recibo. Devuelve
+ * null si la consulta falla: en ese caso no se bloquea la carga — mejor un
+ * duplicado raro que trabarle el flujo al admin.
+ */
+export async function existingReceiptItemKeys(
+  supabase: SupabaseClient,
+  receiptNumbers: string[]
+): Promise<Set<string> | null> {
+  if (receiptNumbers.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("warehouse_receipt_items")
+    .select("receipt_number, product_description, weight_kg")
+    .in("receipt_number", receiptNumbers);
+  if (error || !data) return null;
+  return new Set(
+    (data as Array<{ receipt_number: string; product_description: string; weight_kg: number | string }>).map(
+      (row) => receiptItemKey(row.receipt_number, row.product_description, Number(row.weight_kg))
+    )
+  );
+}
+
 export async function deleteWarehouseReceiptItem(
   supabase: SupabaseClient,
   id: string

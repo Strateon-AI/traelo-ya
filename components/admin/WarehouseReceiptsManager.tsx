@@ -27,7 +27,9 @@ export function WarehouseReceiptsManager({ initial }: { initial: WarehouseReceip
     setProgress({ done: 0, total: files.length });
 
     let okCount = 0;
+    let skippedCount = 0;
     let itemCount = 0;
+    let repeatedItems = 0;
     const failures: string[] = [];
 
     for (const [index, file] of files.entries()) {
@@ -42,14 +44,17 @@ export function WarehouseReceiptsManager({ initial }: { initial: WarehouseReceip
         // Un 413 de Vercel no trae JSON: sin el catch, res.json() tira y se
         // pierde el motivo.
         const data = (await res.json().catch(() => null)) as
-          | { items?: WarehouseReceiptItem[]; error?: string }
+          | { items?: WarehouseReceiptItem[]; skipped?: number; error?: string; alreadyLoaded?: boolean }
           | null;
 
         if (res.ok && data?.items) {
           okCount += 1;
           itemCount += data.items.length;
+          repeatedItems += data.skipped ?? 0;
           const nuevos = data.items;
           setItems((prev) => [...nuevos, ...prev]);
+        } else if (data?.alreadyLoaded) {
+          skippedCount += 1;
         } else {
           const motivo =
             data?.error ?? (res.status === 413 ? "el archivo es muy grande" : `error ${res.status}`);
@@ -62,13 +67,21 @@ export function WarehouseReceiptsManager({ initial }: { initial: WarehouseReceip
     }
 
     setProgress(null);
-    const resumen = `${okCount} de ${files.length} recibo${files.length === 1 ? "" : "s"} procesado${
-      files.length === 1 ? "" : "s"
-    } (${itemCount} bulto${itemCount === 1 ? "" : "s"} cargado${itemCount === 1 ? "" : "s"}).`;
+    const partes = [
+      `${okCount} procesado${okCount === 1 ? "" : "s"} (${itemCount} bulto${itemCount === 1 ? "" : "s"} nuevo${itemCount === 1 ? "" : "s"})`,
+      `${skippedCount} ya estaba${skippedCount === 1 ? "" : "n"} cargado${skippedCount === 1 ? "" : "s"}`,
+      `${failures.length} con error`,
+    ];
+    let resumen = `${partes.join(", ")}.`;
+    if (repeatedItems > 0) {
+      resumen += ` Se omitieron ${repeatedItems} bulto${repeatedItems === 1 ? "" : "s"} que ya estaba${
+        repeatedItems === 1 ? "" : "n"
+      } cargado${repeatedItems === 1 ? "" : "s"}.`;
+    }
     setBanner(
       failures.length === 0
         ? { type: "success", text: resumen }
-        : { type: "error", text: `${resumen} Con error: ${failures.join(" · ")}` }
+        : { type: "error", text: `${resumen} ${failures.join(" · ")}` }
     );
   }
 
