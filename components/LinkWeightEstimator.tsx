@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Info, Link2, Loader2, Search, Sparkles } from "lucide-react";
-import type { WeightEstimate } from "@/lib/types";
+import { Camera, Info, Link2, Loader2, Search, Sparkles } from "lucide-react";
+import type { ScreenshotEstimate, WeightEstimate } from "@/lib/types";
 import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
 
 /**
@@ -19,14 +19,23 @@ import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
  * (marca, modelo, talla, color) y se busca por nombre con Claude. El cliente
  * siempre puede, en cualquier momento, cargar el peso a mano en el campo de
  * abajo — este componente nunca bloquea esa opción.
+ *
+ * Alternativa al link: subir una captura de pantalla de la página. De ahí se
+ * lee nombre y precio (que se cargan en la línea vía `onProductInfo`) y el
+ * peso se estima por categoría. La imagen se comprime en el navegador antes
+ * de mandarla, para no chocar con el límite de tamaño de Vercel.
  */
 export function LinkWeightEstimator({
   onWeight,
+  onProductInfo,
   productName,
 }: {
   onWeight: (kg: number) => void;
+  onProductInfo?: (info: { productName?: string; unitPrice?: number }) => void;
   productName: string;
 }) {
+  const [mode, setMode] = useState<"link" | "captura">("link");
+  const [screenshot, setScreenshot] = useState<ScreenshotEstimate | null>(null);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [estimate, setEstimate] = useState<WeightEstimate | null>(null);
@@ -107,6 +116,44 @@ export function LinkWeightEstimator({
     }
   }
 
+  async function handleScreenshot(file: File | undefined) {
+    if (!file || loading) return;
+
+    setLoading(true);
+    setError(null);
+    setEstimate(null);
+    setScreenshot(null);
+    setNeedsDetail(false);
+
+    try {
+      const imageBase64 = await compressImage(file);
+      const res = await fetch("/api/estimar-desde-imagen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageBase64, mediaType: "image/jpeg" }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { estimate?: ScreenshotEstimate; error?: string }
+        | null;
+
+      if (!res.ok || !data?.estimate?.pesoCobrableKg) {
+        setError(data?.error ?? "No pudimos leer esa captura.");
+        return;
+      }
+
+      setScreenshot(data.estimate);
+      onWeight(data.estimate.pesoCobrableKg.max);
+      onProductInfo?.({
+        productName: data.estimate.producto ?? undefined,
+        unitPrice: data.estimate.precioUsd ?? undefined,
+      });
+    } catch {
+      setError("No pudimos procesar esa imagen. Probá con otra captura.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const aproximado = estimate !== null && estimate.fuente !== "pagina";
   const promedioAplicado =
     estimate !== null &&
@@ -119,11 +166,37 @@ export function LinkWeightEstimator({
     <div className="rounded-2xl border border-brand-blue-500/25 bg-brand-blue-100/30 p-3.5">
       <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-navy-800">
         <Sparkles className="h-4 w-4 text-brand-blue-600" />
-        ¿Tenés el link del producto?
+        {mode === "link" ? "¿Tenés el link del producto?" : "¿Tenés una captura del producto?"}
       </span>
+
+      <div className="mb-2 inline-flex rounded-lg bg-white p-0.5 text-xs font-semibold">
+        {(
+          [
+            { id: "link", label: "Pegar link", icon: Link2 },
+            { id: "captura", label: "Subir captura", icon: Camera },
+          ] as const
+        ).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setMode(id);
+              setError(null);
+            }}
+            className={`focus-ring inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 transition-colors ${
+              mode === id ? "bg-brand-blue-600 text-white" : "text-navy-600 hover:text-navy-900"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
       <p className="mb-1 text-xs leading-relaxed text-navy-600">
-        Pegalo y calculamos el peso de envío solo — incluye el tamaño de la caja, que es
-        lo que realmente define el costo.
+        {mode === "link"
+          ? "Pegalo y calculamos el peso de envío solo — incluye el tamaño de la caja, que es lo que realmente define el costo."
+          : "Subí una captura de la página del producto: leemos el nombre y el precio, y estimamos el peso por tipo de producto."}
       </p>
 
       <button
@@ -143,6 +216,24 @@ export function LinkWeightEstimator({
         </p>
       )}
 
+      {mode === "captura" && (
+        <label className="focus-ring flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-brand-blue-500/40 bg-white px-4 py-3 text-sm font-semibold text-brand-blue-600 hover:bg-brand-blue-100/40">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+          {loading ? "Leyendo la captura…" : "Elegir captura"}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={loading}
+            className="sr-only"
+            onChange={(e) => {
+              handleScreenshot(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
+
+      {mode === "link" && (
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400" />
@@ -170,8 +261,9 @@ export function LinkWeightEstimator({
           {loading ? "Calculando…" : "Calcular"}
         </button>
       </div>
+      )}
 
-      {loading && (
+      {loading && mode === "link" && (
         <p className="mt-2 text-xs text-navy-500">
           Esto puede tardar unos segundos — estamos leyendo la página del producto.
         </p>
@@ -252,7 +344,64 @@ export function LinkWeightEstimator({
         </div>
       )}
 
+      {screenshot?.pesoCobrableKg && (
+        <div className="mt-3 rounded-xl bg-white p-3">
+          {screenshot.producto && (
+            <p className="text-sm font-semibold text-navy-900">{screenshot.producto}</p>
+          )}
+          {screenshot.precioUsd !== null && (
+            <p className="mt-0.5 text-sm text-navy-700">
+              Precio en la captura:{" "}
+              <span className="font-bold text-navy-900">US$ {screenshot.precioUsd.toFixed(2)}</span>
+            </p>
+          )}
+          <p className="mt-0.5 text-sm text-navy-700">
+            Peso de envío estimado:{" "}
+            <span className="font-bold text-navy-900">
+              {screenshot.pesoCobrableKg.min} a {screenshot.pesoCobrableKg.max} kg
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-navy-500">
+            Es un aproximado por tipo de producto — una captura no muestra las medidas de la caja.
+            Revisá el nombre y el precio abajo, y ajustalos si hace falta.
+          </p>
+        </div>
+      )}
+
       {error && <p className="mt-3 text-xs font-medium text-brand-red-600">{error}</p>}
     </div>
   );
+}
+
+/**
+ * Achica la captura antes de mandarla: lado máximo 1600px, JPEG al 80%.
+ * Una captura de celular puede pesar varios MB; así queda en unos cientos de
+ * KB, que es lo que entra cómodo en una función de Vercel y sigue siendo
+ * perfectamente legible para el modelo. Devuelve el base64 sin el prefijo
+ * `data:`.
+ */
+async function compressImage(file: File): Promise<string> {
+  const MAX_SIDE = 1600;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("imagen ilegible"));
+      el.src = url;
+    });
+
+    const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("sin canvas");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    return dataUrl.split(",")[1] ?? "";
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

@@ -185,6 +185,68 @@ async function askOpenAi(systemPrompt: string, userContent: string): Promise<Llm
   }
 }
 
+/**
+ * Lectura de una captura de pantalla (visión). Solo Anthropic. El timeout se
+ * recibe por parámetro porque cada ruta tiene su propio maxDuration y el
+ * timeout tiene que vencer ANTES que la función, para que el cliente reciba
+ * nuestro mensaje de error y no un 504 de Vercel.
+ */
+export async function askModelWithImage(
+  systemPrompt: string,
+  imageBase64: string,
+  mediaType: string,
+  timeoutMs: number = TIMEOUT_MS
+): Promise<LlmResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, text: null, error: "Leer capturas necesita ANTHROPIC_API_KEY configurada." };
+  }
+  try {
+    const res = await withTimeout(
+      fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY as string,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
+          max_tokens: 1024,
+          temperature: 0.1,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
+                { type: "text", text: "Analizá esta captura de pantalla de una página de producto." },
+              ],
+            },
+          ],
+        }),
+      }),
+      timeoutMs
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      return { ok: false, text: null, error: `Anthropic (imagen) respondió ${res.status}: ${body.slice(0, 300)}` };
+    }
+
+    const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+    const text = data.content?.find((block) => block.type === "text")?.text ?? null;
+    return text
+      ? { ok: true, text, error: null }
+      : { ok: false, text: null, error: "Respuesta vacía del modelo (imagen)." };
+  } catch (err) {
+    return {
+      ok: false,
+      text: null,
+      error: err instanceof Error ? err.message : "No se pudo contactar al modelo (imagen).",
+    };
+  }
+}
+
 async function withTimeout(promise: Promise<Response>, timeoutMs: number = TIMEOUT_MS): Promise<Response> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {

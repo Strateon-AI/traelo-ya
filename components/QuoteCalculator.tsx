@@ -471,6 +471,12 @@ function ProductLineFields({
             <LinkWeightEstimator
               productName={line.productName}
               onWeight={(kg) => onChange({ unitWeightKg: kg })}
+              onProductInfo={(info) =>
+                onChange({
+                  ...(info.productName ? { productName: info.productName } : {}),
+                  ...(info.unitPrice ? { unitPrice: info.unitPrice } : {}),
+                })
+              }
             />
 
             <Field label="Peso por unidad (kg)">

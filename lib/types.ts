@@ -23,6 +23,16 @@ export interface FlatRateCategory {
   priceUsd: number;
 }
 
+/** Lo que la IA saca de una captura de pantalla de la página del producto. */
+export interface ScreenshotEstimate {
+  producto: string | null;
+  precioUsd: number | null;
+  pesoCobrableKg: { min: number; max: number } | null;
+  fuente: "estimado" | "sin_datos";
+  confianza: "alta" | "media" | "baja";
+  nota: string | null;
+}
+
 export interface WeightEstimate {
   producto: string | null;
   tienda: string | null;

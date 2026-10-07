@@ -1,4 +1,4 @@
-import type { WeightEstimate, WeightEstimateSource } from "@/lib/types";
+import type { ScreenshotEstimate, WeightEstimate, WeightEstimateSource } from "@/lib/types";
 
 /**
  * Divisor volumétrico por defecto (cm³ por kg). El valor real depende del
@@ -16,6 +16,28 @@ const SOURCES: WeightEstimateSource[] = [
 ];
 
 /**
+ * Referencias de peso real sacadas de las guías de FlyCargo ya procesadas.
+ * Es el respaldo fijo: se usa cuando todavía no hay recibos de almacén
+ * cargados desde /admin (o cuando no se pudieron leer). Vive en un solo
+ * lugar para que los tres prompts y el respaldo de los recibos no se
+ * desfasen entre sí.
+ */
+export const DEFAULT_REFERENCE_DATA = `DATOS REALES DE REFERENCIA (de envíos ya pesados por este courier, Miami→Bolivia):
+- Celular con caja: 0,4–0,6 kg
+- Funda/case: 0,3–0,5 kg
+- Tablet: 1–1,2 kg
+- Zapatos/zapatillas: 1–1,5 kg
+- Ropa (una prenda): 0,3–0,8 kg
+- Cosméticos: 0,4–1,3 kg
+- Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
+
+Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.`;
+
+function referenceBlock(referenceData?: string): string {
+  return referenceData && referenceData.trim() ? referenceData : DEFAULT_REFERENCE_DATA;
+}
+
+/**
  * El prompt es el producto acá: si el sistema es "link entra, estimado sale",
  * toda la calidad vive en este texto. Dos decisiones importantes:
  *
@@ -26,7 +48,7 @@ const SOURCES: WeightEstimateSource[] = [
  *   sistema aparte, así se puede ajustar sin reescribir el prompt (y no se
  *   aplica dos veces sin querer).
  */
-export function buildWeightPrompt(divisor: number): string {
+export function buildWeightPrompt(divisor: number, referenceData?: string): string {
   return `Sos el estimador de peso de un servicio de courier de Estados Unidos a Bolivia.
 Recibís la información de una página de producto y devolvés cuánto va a pesar
 LA CAJA EN QUE SE ENVÍA EL PRODUCTO, no el producto desnudo.
@@ -35,16 +57,7 @@ CONFIGURACIÓN
 - Divisor volumétrico del courier: ${divisor}
 - peso_volumetrico_kg = (largo_cm × ancho_cm × alto_cm) / ${divisor}
 
-DATOS REALES DE REFERENCIA (de envíos ya pesados por este courier, Miami→Bolivia):
-- Celular con caja: 0,4–0,6 kg
-- Funda/case: 0,3–0,5 kg
-- Tablet: 1–1,2 kg
-- Zapatos/zapatillas: 1–1,5 kg
-- Ropa (una prenda): 0,3–0,8 kg
-- Cosméticos: 0,4–1,3 kg
-- Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
-
-Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.
+${referenceBlock(referenceData)}
 
 CÓMO ESTIMAR — en este orden de prioridad:
 
@@ -98,7 +111,7 @@ SALIDA
  * busca el producto por nombre en la web entera en vez de leer una página
  * puntual. Solo se usa con Anthropic, que es el proveedor con búsqueda web.
  */
-export function buildWeightSearchPrompt(divisor: number): string {
+export function buildWeightSearchPrompt(divisor: number, referenceData?: string): string {
   return `Sos el estimador de peso de un servicio de courier de Estados Unidos a Bolivia.
 
 No se pudo leer directamente la página del producto — la tienda bloquea el acceso automatizado. Te doy el NOMBRE DEL PRODUCTO tal como lo escribió el cliente, y el nombre de la tienda. Buscá en la web información sobre este producto (especificaciones del fabricante, la misma publicación en otra tienda, reviews que mencionen el tamaño de la caja de envío, foros) para estimar cuánto va a pesar LA CAJA EN QUE SE ENVÍA, no el producto desnudo.
@@ -107,16 +120,7 @@ CONFIGURACIÓN
 - Divisor volumétrico del courier: ${divisor}
 - peso_volumetrico_kg = (largo_cm × ancho_cm × alto_cm) / ${divisor}
 
-DATOS REALES DE REFERENCIA (de envíos ya pesados por este courier, Miami→Bolivia):
-- Celular con caja: 0,4–0,6 kg
-- Funda/case: 0,3–0,5 kg
-- Tablet: 1–1,2 kg
-- Zapatos/zapatillas: 1–1,5 kg
-- Ropa (una prenda): 0,3–0,8 kg
-- Cosméticos: 0,4–1,3 kg
-- Accesorios chicos (memorias, cables, etc.): 0,15–0,65 kg
-
-Usá estos rangos como referencia cuando el producto encaje en una de estas categorías y no tengas datos de la página — son más confiables que una estimación genérica, porque están sacados de paquetes reales de este mismo courier.
+${referenceBlock(referenceData)}
 
 CÓMO ESTIMAR — en este orden de prioridad:
 
@@ -306,4 +310,69 @@ function asRange(value: unknown): { min: number; max: number } | null {
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Variante para cuando el cliente manda una captura de pantalla en vez del
+ * link. Las capturas casi nunca muestran las medidas de la caja, así que el
+ * peso sale por categoría de producto (con las referencias reales como
+ * ancla). El precio, en cambio, sí se lee de la imagen — y solo se acepta si
+ * se ve literalmente, nunca inventado.
+ */
+export function buildScreenshotPrompt(divisor: number, referenceData?: string): string {
+  return `Sos el estimador de peso de un servicio de courier de Estados Unidos a Bolivia.
+
+El cliente te mandó una CAPTURA DE PANTALLA de la página de un producto (no el link, no el texto de la página). Mirá la imagen y extraé lo que se vea: nombre del producto y precio. Las capturas normales NO muestran las medidas de la caja de envío, así que para el peso usá el mismo criterio que cuando no hay página: identificá el tipo de producto y estimá por categoría.
+
+${referenceBlock(referenceData)}
+
+CONFIGURACIÓN
+- Divisor volumétrico del courier: ${divisor}
+
+CÓMO ESTIMAR
+1. Leé el precio exacto que se ve en la captura — número real, no inventado. Si no se alcanza a leer con claridad, dejalo en null.
+2. Para el peso, estimá por categoría de producto usando las referencias reales de arriba. Si no podés identificar qué tipo de producto es ni por la imagen, fuente: "sin_datos".
+
+REGLAS
+- El precio tiene que ser el que literalmente se ve en la imagen, nunca inventado.
+- El peso cobrable siempre es un rango min-max, nunca un número exacto.
+- Respondé únicamente con el JSON, sin texto alrededor.
+
+SALIDA
+{
+  "producto": "nombre corto",
+  "precio_usd": 0,
+  "peso_cobrable_kg": { "min": 0, "max": 0 },
+  "fuente": "estimado | sin_datos",
+  "confianza": "alta | media | baja",
+  "nota": "una frase — aclarando que viene de una captura, no de la página"
+}`;
+}
+
+const CONFIANZAS = ["alta", "media", "baja"] as const;
+
+export function parseScreenshotEstimate(text: string): ScreenshotEstimate | null {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const raw = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    const peso = raw.peso_cobrable_kg as { min?: unknown; max?: unknown } | null | undefined;
+    const precio = raw.precio_usd;
+    const confianza = CONFIANZAS.find((c) => c === raw.confianza) ?? "baja";
+
+    return {
+      producto: typeof raw.producto === "string" && raw.producto.trim() ? raw.producto.trim() : null,
+      // 0 no es un precio leído: es el placeholder del esquema de salida.
+      precioUsd: typeof precio === "number" && precio > 0 ? precio : null,
+      pesoCobrableKg:
+        peso && typeof peso.min === "number" && typeof peso.max === "number" && peso.max > 0
+          ? { min: peso.min, max: peso.max }
+          : null,
+      fuente: raw.fuente === "sin_datos" ? "sin_datos" : "estimado",
+      confianza,
+      nota: typeof raw.nota === "string" ? raw.nota : null,
+    };
+  } catch {
+    return null;
+  }
 }
