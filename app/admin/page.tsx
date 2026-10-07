@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { listStoredEstimates } from "@/lib/data/weightEstimates";
+import { getWarehouseReceiptItems } from "@/lib/data/warehouseReceipts";
 import { DEFAULT_VOLUMETRIC_DIVISOR } from "@/lib/weightEstimate";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -24,6 +25,7 @@ export default async function AdminPage() {
     weightEstimates,
     { data: orders },
     { data: flatRateCategories },
+    warehouseReceiptItems,
   ] = await Promise.all([
     supabase.from("promo").select("*").eq("id", 1).maybeSingle(),
     supabase.from("quote_config").select("*").eq("id", 1).maybeSingle(),
@@ -32,6 +34,7 @@ export default async function AdminPage() {
     listStoredEstimates(),
     supabase.from("orders").select("*").order("created_at", { ascending: false }),
     supabase.from("flat_rate_categories").select("*").order("sort_order", { ascending: true }),
+    getWarehouseReceiptItems(supabase),
   ]);
 
   return (
@@ -91,6 +94,7 @@ export default async function AdminPage() {
         status: o.status ?? "pending",
         createdAt: o.created_at,
       }))}
+      initialWarehouseReceiptItems={warehouseReceiptItems}
       initialFlatRateCategories={(flatRateCategories ?? []).map((c) => ({
         id: c.id,
         label: c.label,

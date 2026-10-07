@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getQuoteConfig } from "@/lib/data/quoteConfig";
+import { getReferenceDataBlock } from "@/lib/data/warehouseReceipts";
 import { askModelWithImage, searchConfigured } from "@/lib/llm";
 import { buildScreenshotPrompt, parseScreenshotEstimate } from "@/lib/weightEstimate";
 
@@ -59,8 +60,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Leer capturas todavía no está configurado." }, { status: 503 });
   }
 
-  const config = await getQuoteConfig();
-  const prompt = buildScreenshotPrompt(config.volumetricDivisor);
+  const [config, referenceData] = await Promise.all([getQuoteConfig(), getReferenceDataBlock()]);
+  const prompt = buildScreenshotPrompt(config.volumetricDivisor, referenceData);
   const result = await askModelWithImage(prompt, imageBase64, mediaType, LLM_TIMEOUT_MS);
 
   if (!result.ok || !result.text) {

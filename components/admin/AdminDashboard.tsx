@@ -18,6 +18,8 @@ import { PromoForm } from "./PromoForm";
 import { TopProductsManager } from "./TopProductsManager";
 import { InstagramVideosManager } from "./InstagramVideosManager";
 import { WeightEstimatesManager } from "./WeightEstimatesManager";
+import { WarehouseReceiptsManager } from "./WarehouseReceiptsManager";
+import type { WarehouseReceiptItem } from "@/lib/data/warehouseReceipts";
 import { OrdersManager, type AdminOrder } from "./OrdersManager";
 
 export function AdminDashboard({
@@ -29,6 +31,7 @@ export function AdminDashboard({
   initialWeightEstimates,
   initialOrders,
   initialFlatRateCategories,
+  initialWarehouseReceiptItems,
 }: {
   userEmail: string;
   initialPromo: Promo | null;
@@ -38,6 +41,7 @@ export function AdminDashboard({
   initialWeightEstimates: StoredWeightEstimate[];
   initialOrders: AdminOrder[];
   initialFlatRateCategories: FlatRateCategory[];
+  initialWarehouseReceiptItems: WarehouseReceiptItem[];
 }) {
   const router = useRouter();
 
@@ -82,6 +86,7 @@ export function AdminDashboard({
         <TopProductsManager initial={initialTopProducts} />
         <InstagramVideosManager initial={initialInstagramVideos} />
         <WeightEstimatesManager initial={initialWeightEstimates} />
+        <WarehouseReceiptsManager initial={initialWarehouseReceiptItems ?? []} />
       </div>
     </div>
   );

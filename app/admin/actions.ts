@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { deleteWarehouseReceiptItem as deleteReceiptItemRow } from "@/lib/data/warehouseReceipts";
 
 async function requireSession() {
   const supabase = await createClient();
@@ -229,5 +230,20 @@ export async function updateFlatRateCategory(id: string, priceUsd: number) {
 
   if (dbError) return { error: dbError.message };
   revalidatePath("/");
+  return { error: null };
+}
+
+/**
+ * Borra un bulto cargado desde un recibo de almacén (por ejemplo, si la IA
+ * leyó mal un peso). Revalida "/" porque esas filas alimentan las
+ * referencias del cotizador.
+ */
+export async function deleteWarehouseReceiptItem(id: string) {
+  const { supabase, error } = await requireSession();
+  if (error) return { error };
+
+  const { error: dbError } = await deleteReceiptItemRow(supabase, id);
+  if (dbError) return { error: dbError };
+  revalidatePath("/admin");
   return { error: null };
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getQuoteConfig } from "@/lib/data/quoteConfig";
+import { getReferenceDataBlock } from "@/lib/data/warehouseReceipts";
 import {
   findCachedEstimate,
   isValidProductUrl,
@@ -101,7 +102,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const config = await getQuoteConfig();
+  // Las referencias de recibos reales se piden recién acá, después de la
+  // caché: un acierto en caché no necesita llamar al modelo.
+  const [config, referenceData] = await Promise.all([getQuoteConfig(), getReferenceDataBlock()]);
   let result;
 
   if (forceSearch) {
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const searchPrompt = buildWeightSearchPrompt(config.volumetricDivisor);
+    const searchPrompt = buildWeightSearchPrompt(config.volumetricDivisor, referenceData);
     result = await askModelWithSearch(
       searchPrompt,
       `PRODUCTO: ${productName}\nTIENDA (no se pudo leer la página): ${resolvedUrl}`
@@ -127,7 +130,7 @@ export async function POST(request: Request) {
     // detalle en vez de gastar de más reintentando automático.
     const page = await fetchProductPage(resolvedUrl);
     if (page.ok && page.text) {
-      const prompt = buildWeightPrompt(config.volumetricDivisor);
+      const prompt = buildWeightPrompt(config.volumetricDivisor, referenceData);
       result = await askModel(prompt, `LINK: ${resolvedUrl}\n\nCONTENIDO DE LA PÁGINA:\n${page.text}`);
     } else {
       return NextResponse.json(

@@ -376,3 +376,98 @@ export function parseScreenshotEstimate(text: string): ScreenshotEstimate | null
     return null;
   }
 }
+
+/**
+ * Lectura de recibos de almacén desde /admin. Los recibos de KGE / Magaya
+ * traen el nombre del destinatario pegado a la descripción
+ * ("DISCOS MUSIC [ OSCAR MEDINA ]"). Ese nombre es de un tercero — puede ser
+ * un cliente de FlyCargo que no tiene nada que ver con Tráelo Ya — y no se
+ * guarda: el prompt le pide al modelo que lo descarte, y además
+ * `limpiarDescripcion` lo saca de nuevo del lado del servidor, por si el
+ * modelo no cumple.
+ */
+export function buildReceiptExtractionPrompt(): string {
+  return `Sos un asistente que lee recibos/guías de almacén de un courier de Estados Unidos a Bolivia (formato típico: "Warehouse Receipt" de KGE / Magaya Cargo System, con filas de Pcs/Package, Dimensions, Description, Weight, Volume).
+
+El documento es un recibo o guía de un paquete recepcionado en almacén. Puede traer uno o varios bultos/ítems, cada uno con descripción, peso y a veces medidas.
+
+Extraé TODOS los ítems que encuentres. Para cada uno:
+- descripcion: SOLO el tipo de producto (ej: "Discos de música", "Zapatillas", "Herramientas"). Si el recibo trae un nombre de persona entre corchetes o como nota (ej: "[ OSCAR MEDINA ]"), NO lo incluyas — es el nombre del destinatario, no del producto, y no debe guardarse.
+- peso_kg: el peso real en kg. Si el recibo lo da en libras (lb), convertilo a kg (1 lb = 0.453592 kg).
+- dimensiones_cm: { largo, ancho, alto } en centímetros. Las medidas en los recibos suelen venir en PULGADAS (formato "17.80x13.40x4.80in") — convertilas a cm (1 in = 2.54 cm). Si no hay medidas, dejalo en null.
+- numero_recibo: el número de recibo (ej: "W-115601"), se puede repetir entre ítems del mismo recibo.
+
+Ignorá: volumen en m³, peso volumétrico (VKg) ya calculado, números de tracking, nombres de personas, direcciones.
+
+Si el documento no es un recibo de almacén o no se puede leer, devolvé una lista vacía.
+
+Respondé únicamente con el JSON, sin texto alrededor.
+
+SALIDA
+{
+  "items": [
+    {
+      "numero_recibo": "texto o null",
+      "descripcion": "texto",
+      "peso_kg": 0,
+      "dimensiones_cm": { "largo": 0, "ancho": 0, "alto": 0 }
+    }
+  ]
+}`;
+}
+
+export interface ReceiptExtractedItem {
+  numeroRecibo: string | null;
+  descripcion: string;
+  pesoKg: number;
+  dimensionesCm: { largo: number; ancho: number; alto: number } | null;
+}
+
+/** Saca cualquier "[ ... ]" (el nombre del destinatario en los recibos de KGE) y espacios sobrantes. */
+export function limpiarDescripcion(descripcion: string): string {
+  return descripcion
+    .replace(/\[[^\]]*\]?/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function isPositiveNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+export function parseReceiptExtraction(text: string): ReceiptExtractedItem[] {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return [];
+    const raw = JSON.parse(jsonMatch[0]) as { items?: unknown };
+    if (!Array.isArray(raw.items)) return [];
+
+    const out: ReceiptExtractedItem[] = [];
+    for (const entry of raw.items as Array<Record<string, unknown>>) {
+      if (!entry || typeof entry !== "object") continue;
+      if (typeof entry.descripcion !== "string" || !isPositiveNumber(entry.peso_kg)) continue;
+
+      const descripcion = limpiarDescripcion(entry.descripcion);
+      if (!descripcion) continue;
+
+      const d = entry.dimensiones_cm as Record<string, unknown> | null | undefined;
+      const dimensionesCm =
+        d && isPositiveNumber(d.largo) && isPositiveNumber(d.ancho) && isPositiveNumber(d.alto)
+          ? { largo: d.largo, ancho: d.ancho, alto: d.alto }
+          : null;
+
+      out.push({
+        numeroRecibo:
+          typeof entry.numero_recibo === "string" && entry.numero_recibo.trim()
+            ? entry.numero_recibo.trim()
+            : null,
+        descripcion,
+        pesoKg: entry.peso_kg,
+        dimensionesCm,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}

@@ -247,6 +247,67 @@ export async function askModelWithImage(
   }
 }
 
+/**
+ * Lectura de un PDF (recibo de almacén). Solo Anthropic. Mismo criterio de
+ * timeout que askModelWithImage: tiene que vencer antes que el maxDuration
+ * de la ruta que lo llama.
+ */
+export async function askModelWithDocument(
+  systemPrompt: string,
+  documentBase64: string,
+  mediaType: string,
+  timeoutMs: number = TIMEOUT_MS
+): Promise<LlmResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, text: null, error: "Leer documentos necesita ANTHROPIC_API_KEY configurada." };
+  }
+  try {
+    const res = await withTimeout(
+      fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY as string,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
+          max_tokens: 2048,
+          temperature: 0.1,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "document", source: { type: "base64", media_type: mediaType, data: documentBase64 } },
+                { type: "text", text: "Leé este recibo de almacén y extraé los datos." },
+              ],
+            },
+          ],
+        }),
+      }),
+      timeoutMs
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      return { ok: false, text: null, error: `Anthropic (documento) respondió ${res.status}: ${body.slice(0, 300)}` };
+    }
+
+    const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+    const text = data.content?.find((block) => block.type === "text")?.text ?? null;
+    return text
+      ? { ok: true, text, error: null }
+      : { ok: false, text: null, error: "Respuesta vacía del modelo (documento)." };
+  } catch (err) {
+    return {
+      ok: false,
+      text: null,
+      error: err instanceof Error ? err.message : "No se pudo contactar al modelo (documento).",
+    };
+  }
+}
+
 async function withTimeout(promise: Promise<Response>, timeoutMs: number = TIMEOUT_MS): Promise<Response> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
