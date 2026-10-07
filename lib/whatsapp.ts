@@ -38,6 +38,7 @@ export interface QuoteMessageInput {
   totalWeightKg: number;
   shippingCost: number;
   flatRateCost: number;
+  productsTotal: number;
   total: number;
   orderCode?: string;
 }
@@ -72,6 +73,9 @@ export function buildQuoteMessage(input: QuoteMessageInput): string {
         `(Incluye comisión de compra del ${input.commissionPercent}% sobre el precio del producto — a coordinar)`
       );
     }
+  }
+  if (input.productsTotal > 0) {
+    lines.push(`Precio del producto: US$ ${input.productsTotal.toFixed(2)}`);
   }
   if (input.totalWeightKg > 0) {
     lines.push(`Peso total estimado (productos por peso): ${input.totalWeightKg} kg`);

@@ -162,6 +162,7 @@ export function QuoteCalculator({
       totalWeightKg: result.totalWeightKg,
       shippingCost: result.shippingCost,
       flatRateCost: result.flatRateCost,
+      productsTotal: result.productsTotal,
       total: result.total,
       orderCode,
     });
@@ -243,6 +244,9 @@ export function QuoteCalculator({
           Agregar otro producto
         </button>
 
+        {result.productsTotal > 0 && (
+          <SummaryRow label="Precio del producto" value={formatUsd(result.productsTotal)} />
+        )}
         {result.totalWeightKg > 0 && (
           <>
             <SummaryRow label="Tarifa referencial" value={`${formatUsd(config.weightRatePerKg)} por kg`} />
@@ -261,9 +265,10 @@ export function QuoteCalculator({
         )}
         <SummaryRow label="Total estimado" value={formatUsd(result.total)} emphasis />
         <p className="-mt-1 text-xs text-navy-500">
-          {result.hasCommission
-            ? "El total incluye envío y comisión de compra — no incluye el valor del producto."
-            : "No incluye el valor del producto: eso se paga en la tienda o se reembolsa aparte."}
+          Incluye el precio del producto que ingresaste
+          {result.hasFlatRate || result.totalWeightKg > 0 ? " y el envío" : ""}
+          {result.hasCommission ? " y la comisión de compra" : ""}. Es un estimado — se confirma al
+          recibir el paquete en almacén.
         </p>
       </div>
 
