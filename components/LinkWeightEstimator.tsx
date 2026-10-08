@@ -7,7 +7,10 @@ import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
 import { ALLOWED_STORES_LABEL, isAllowedProductHost, isShortLink } from "@/lib/productUrl";
 
 /**
- * Pega el link del producto y completa solo el campo de peso del cotizador.
+ * Calcula el peso de envío de un producto y completa el campo de peso del
+ * cotizador. Dos entradas: una captura de la página (la opción principal,
+ * sirve para cualquier tienda) o el link (solo las tiendas de la lista blanca
+ * de lib/productUrl.ts).
  *
  * El peso que se usa es el MÁXIMO del rango estimado, no el promedio: quedarse
  * corto significa un cliente enojado cuando el paquete se pesa en el almacén,
