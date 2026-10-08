@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Camera, Info, Link2, Loader2, Search, Sparkles } from "lucide-react";
 import type { ScreenshotEstimate, WeightEstimate } from "@/lib/types";
 import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
+import { ALLOWED_STORES_LABEL, isAllowedProductHost, isShortLink } from "@/lib/productUrl";
 
 /**
  * Pega el link del producto y completa solo el campo de peso del cotizador.
@@ -25,6 +26,27 @@ import { FACTOR_CAJA_GRANDE } from "@/lib/weightEstimate";
  * peso se estima por categoría. La imagen se comprime en el navegador antes
  * de mandarla, para no chocar con el límite de tamaño de Vercel.
  */
+type LinkCheck = "ok" | "tienda_no_soportada" | "no_es_link";
+
+/**
+ * Chequeo en el navegador antes de gastar la llamada. Es la misma lista
+ * blanca que aplica el servidor (lib/productUrl.ts). Los links cortos
+ * (a.co, amzn.to) pasan: a dónde llevan solo se sabe resolviéndolos, y eso
+ * lo hace el servidor.
+ */
+function checkLink(raw: string): LinkCheck {
+  const value = raw.trim();
+  if (!value) return "ok";
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "no_es_link";
+  } catch {
+    return "no_es_link";
+  }
+  if (isShortLink(value) || isAllowedProductHost(value)) return "ok";
+  return "tienda_no_soportada";
+}
+
 export function LinkWeightEstimator({
   onWeight,
   onProductInfo,
@@ -34,7 +56,10 @@ export function LinkWeightEstimator({
   onProductInfo?: (info: { productName?: string; unitPrice?: number }) => void;
   productName: string;
 }) {
-  const [mode, setMode] = useState<"link" | "captura">("link");
+  // La captura es la opción principal: sirve para cualquier tienda, el link
+  // solo para las de la lista blanca.
+  const [mode, setMode] = useState<"link" | "captura">("captura");
+  const [linkCheck, setLinkCheck] = useState<LinkCheck>("ok");
   const [screenshot, setScreenshot] = useState<ScreenshotEstimate | null>(null);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,8 +69,18 @@ export function LinkWeightEstimator({
   const [detailText, setDetailText] = useState("");
   const [showVolumetricInfo, setShowVolumetricInfo] = useState(false);
 
+  function switchToScreenshot() {
+    setMode("captura");
+    setLinkCheck("ok");
+    setError(null);
+  }
+
   async function handleEstimate() {
     if (!url.trim() || loading) return;
+
+    const check = checkLink(url);
+    setLinkCheck(check);
+    if (check !== "ok") return;
 
     setLoading(true);
     setError(null);
@@ -68,6 +103,10 @@ export function LinkWeightEstimator({
         if (data.canRetryWithDetail) {
           setDetailText(productName);
           setNeedsDetail(true);
+        } else if (res.status === 400) {
+          // En /api/estimar-peso, un 400 es siempre "esa tienda no la
+          // leemos" (link directo o link corto que lleva a otra tienda).
+          setLinkCheck("tienda_no_soportada");
         } else {
           setError(data.error ?? "No pudimos calcular el peso de ese producto.");
         }
@@ -166,16 +205,16 @@ export function LinkWeightEstimator({
     <div className="rounded-2xl border border-brand-blue-500/25 bg-brand-blue-100/30 p-3.5">
       <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-navy-800">
         <Sparkles className="h-4 w-4 text-brand-blue-600" />
-        {mode === "link" ? "¿Tenés el link del producto?" : "¿Tenés una captura del producto?"}
+        ¿Querés que calculemos el peso por vos?
       </span>
 
-      <div className="mb-2 inline-flex rounded-lg bg-white p-0.5 text-xs font-semibold">
+      <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-white p-1">
         {(
           [
-            { id: "link", label: "Pegar link", icon: Link2 },
-            { id: "captura", label: "Subir captura", icon: Camera },
+            { id: "captura", label: "Subir captura", hint: "Funciona con cualquier tienda", icon: Camera },
+            { id: "link", label: "Pegar link", hint: `Solo ${ALLOWED_STORES_LABEL}`, icon: Link2 },
           ] as const
-        ).map(({ id, label, icon: Icon }) => (
+        ).map(({ id, label, hint, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -183,20 +222,30 @@ export function LinkWeightEstimator({
               setMode(id);
               setError(null);
             }}
-            className={`focus-ring inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 transition-colors ${
-              mode === id ? "bg-brand-blue-600 text-white" : "text-navy-600 hover:text-navy-900"
+            aria-pressed={mode === id}
+            className={`focus-ring flex flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+              mode === id ? "bg-brand-blue-600 text-white" : "text-navy-700 hover:bg-surface-50"
             }`}
           >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
+            <span className="inline-flex items-center gap-1 text-xs font-semibold">
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </span>
+            <span
+              className={`mt-0.5 text-[11px] leading-snug ${
+                mode === id ? "text-white/80" : "text-navy-500"
+              }`}
+            >
+              {hint}
+            </span>
           </button>
         ))}
       </div>
 
       <p className="mb-1 text-xs leading-relaxed text-navy-600">
         {mode === "link"
-          ? "Pegalo y calculamos el peso de envío solo — incluye el tamaño de la caja, que es lo que realmente define el costo."
-          : "Subí una captura de la página del producto: leemos el nombre y el precio, y estimamos el peso por tipo de producto."}
+          ? `Pegá el link y calculamos el peso solos. Por ahora solo leemos links de ${ALLOWED_STORES_LABEL}. Si es de otra tienda, usá la captura.`
+          : "Sacale una captura a la página del producto (desde tu cel o compu) y la subís acá. Leemos el nombre y el precio, y estimamos el peso. Sirve para cualquier tienda."}
       </p>
 
       <button
@@ -232,6 +281,9 @@ export function LinkWeightEstimator({
           />
         </label>
       )}
+      {mode === "captura" && (
+        <p className="mt-1.5 text-xs text-navy-500">Tiene que verse el precio en la captura.</p>
+      )}
 
       {mode === "link" && (
       <div className="flex gap-2">
@@ -240,7 +292,12 @@ export function LinkWeightEstimator({
           <input
             type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              if (linkCheck !== "ok") setLinkCheck("ok");
+            }}
+            onPaste={(e) => setLinkCheck(checkLink(e.clipboardData.getData("text")))}
+            onBlur={() => setLinkCheck(checkLink(url))}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -261,6 +318,29 @@ export function LinkWeightEstimator({
           {loading ? "Calculando…" : "Calcular"}
         </button>
       </div>
+      )}
+
+      {mode === "link" && linkCheck === "tienda_no_soportada" && (
+        <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs leading-relaxed text-amber-900">
+            Esa tienda no la podemos leer por link. Subí una captura de la página y lo calculamos
+            igual.
+          </p>
+          <button
+            type="button"
+            onClick={switchToScreenshot}
+            className="focus-ring mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-blue-500"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            Subir captura
+          </button>
+        </div>
+      )}
+      {mode === "link" && linkCheck === "no_es_link" && (
+        <p className="mt-2 text-xs text-navy-600">
+          Eso no parece un link. Copiá la dirección completa de la página del producto (empieza
+          con https://).
+        </p>
       )}
 
       {loading && mode === "link" && (
