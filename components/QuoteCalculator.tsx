@@ -324,7 +324,7 @@ export function QuoteCalculator({
           !allLinesComplete
             ? "Completá nombre, cantidad, precio y peso (o categoría) de cada producto para continuar"
             : !hasContactInfo
-              ? "Completa tu nombre y WhatsApp para continuar"
+              ? "Completá tu nombre y WhatsApp para continuar"
               : undefined
         }
         className={`focus-ring mt-4 flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors ${
@@ -388,7 +388,26 @@ function ProductLineFields({
       </div>
 
       <div className="mt-2.5 space-y-3">
-        <Field label="¿Qué producto quieres traer?">
+        {/* Mismo comportamiento que antes de moverlo: con tarifa fija el peso no
+            se usa, así que el bloque se oculta. Lo que ya completó (nombre y
+            precio) queda en la línea aunque el bloque desaparezca. */}
+        {!isFlatRate && (
+          <div>
+            <LinkWeightEstimator
+              productName={line.productName}
+              onWeight={(kg) => onChange({ unitWeightKg: kg })}
+              onProductInfo={(info) =>
+                onChange({
+                  ...(info.productName ? { productName: info.productName } : {}),
+                  ...(info.unitPrice ? { unitPrice: info.unitPrice } : {}),
+                })
+              }
+            />
+            <p className="mt-1.5 text-xs text-navy-500">O completá los datos a mano.</p>
+          </div>
+        )}
+
+        <Field label="¿Qué producto querés traer?">
           <input
             type="text"
             list={datalistId}
@@ -468,17 +487,6 @@ function ProductLineFields({
           </div>
         ) : (
           <>
-            <LinkWeightEstimator
-              productName={line.productName}
-              onWeight={(kg) => onChange({ unitWeightKg: kg })}
-              onProductInfo={(info) =>
-                onChange({
-                  ...(info.productName ? { productName: info.productName } : {}),
-                  ...(info.unitPrice ? { unitPrice: info.unitPrice } : {}),
-                })
-              }
-            />
-
             <Field label="Peso por unidad (kg)">
               <input
                 type="number"
@@ -532,7 +540,7 @@ function CalculatorHeader() {
       </span>
       <div>
         <h2 className="text-lg font-bold text-navy-900">Cotizador rápido</h2>
-        <p className="text-sm text-navy-600">Calcula el costo estimado de tu pedido</p>
+        <p className="text-sm text-navy-600">Calculá el costo estimado de tu pedido</p>
       </div>
     </div>
   );
