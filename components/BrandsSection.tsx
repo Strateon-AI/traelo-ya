@@ -65,7 +65,7 @@ export function BrandsSection() {
           <div className="rounded-3xl bg-white p-6 shadow-card-lg sm:p-7">
             <h3 className="text-xl font-bold text-navy-900">¿Listo para traerlo ya?</h3>
             <p className="mt-2 text-sm leading-relaxed text-navy-600">
-              Escríbenos por WhatsApp y cotiza sin compromiso.
+              Escribinos por WhatsApp y cotizá sin compromiso.
             </p>
             <a
               href="#cotizador"

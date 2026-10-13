@@ -46,7 +46,7 @@ export function Header() {
             className="focus-ring inline-flex items-center gap-2 rounded-full bg-whatsapp-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-whatsapp-700"
           >
             <WhatsAppGlyph className="h-4 w-4" />
-            Escríbenos
+            Escribinos
           </a>
         </div>
 
@@ -82,7 +82,7 @@ export function Header() {
             className="focus-ring mt-3 flex items-center justify-center gap-2 rounded-full bg-whatsapp-600 px-5 py-3 text-sm font-semibold text-white hover:bg-whatsapp-700"
           >
             <WhatsAppGlyph className="h-4 w-4" />
-            Escríbenos
+            Escribinos
           </a>
         </div>
       )}

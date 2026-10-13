@@ -1,10 +1,10 @@
 import { ArrowRight, Check, Package, PlaneTakeoff, Search, ShoppingBag } from "lucide-react";
 
 const STEPS = [
-  { icon: Search, title: "Cotiza", text: "Envíanos el link o usa nuestro cotizador." },
+  { icon: Search, title: "Cotizá", text: "Envianos el link o usá nuestro cotizador." },
   { icon: ShoppingBag, title: "Compramos", text: "Por vos o con tu tarjeta en tiendas de EE.UU." },
   { icon: PlaneTakeoff, title: "Enviamos", text: "Tu pedido viaja a Bolivia en 7 a 10 días hábiles." },
-  { icon: Package, title: "Recibes", text: "Te lo entregamos en la puerta de tu casa u oficina." },
+  { icon: Package, title: "Recibís", text: "Te lo entregamos en la puerta de tu casa u oficina." },
 ];
 
 const CHECKLIST = [

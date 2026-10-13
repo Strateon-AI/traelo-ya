@@ -11,7 +11,7 @@ const EMPTY_PROMO: Promo = {
   title: "",
   description: "",
   imageUrl: null,
-  ctaText: "Escríbenos por WhatsApp",
+  ctaText: "Escribinos por WhatsApp",
   startsAt: null,
   endsAt: null,
   active: false,

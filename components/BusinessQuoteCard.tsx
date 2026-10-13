@@ -15,7 +15,7 @@ export function BusinessQuoteCard({ variant = "section" }: { variant?: "section"
   if (variant === "embedded") {
     return (
       <div className="rounded-2xl border border-brand-blue-100 bg-brand-blue-100/40 p-5">
-        <h3 className="text-base font-bold text-navy-900">¿Compras para tu negocio?</h3>
+        <h3 className="text-base font-bold text-navy-900">¿Comprás para tu negocio?</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-navy-700">
           Te ofrecemos tarifas preferenciales para compras comerciales y pedidos de mayor
           volumen.
@@ -42,7 +42,7 @@ export function BusinessQuoteCard({ variant = "section" }: { variant?: "section"
         ¿Comercio o pedidos grandes?
       </h3>
       <p className="mt-2 text-sm leading-relaxed text-navy-700">
-        Si importas para tu negocio, te ofrecemos tarifas preferenciales y atención
+        Si importás para tu negocio, te ofrecemos tarifas preferenciales y atención
         personalizada.
       </p>
       <ul className="mt-4 space-y-2.5">
@@ -62,7 +62,7 @@ export function BusinessQuoteCard({ variant = "section" }: { variant?: "section"
         className="focus-ring mt-6 flex items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-whatsapp-700"
       >
         <WhatsAppGlyph className="h-4.5 w-4.5" />
-        Solicita tu tarifa por WhatsApp
+        Solicitá tu tarifa por WhatsApp
       </a>
     </div>
   );

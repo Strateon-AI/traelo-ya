@@ -22,10 +22,10 @@ export function TrackingSection() {
               <Package className="h-5 w-5" strokeWidth={2.1} />
             </span>
             <h2 className="mt-4 text-xl font-bold text-navy-900 sm:text-2xl">
-              ¿Quieres saber el estado de tu pedido?
+              ¿Querés saber el estado de tu pedido?
             </h2>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-navy-600">
-              Escríbenos por WhatsApp con tu número de pedido (o el de tracking del
+              Escribinos por WhatsApp con tu número de pedido (o el de tracking del
               transportista) y te contamos en qué va, al toque.
             </p>
 

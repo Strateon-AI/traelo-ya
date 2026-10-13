@@ -46,7 +46,7 @@ export default async function AdminPage() {
               title: promo.title ?? "",
               description: promo.description ?? "",
               imageUrl: promo.image_url,
-              ctaText: promo.cta_text ?? "Escríbenos por WhatsApp",
+              ctaText: promo.cta_text ?? "Escribinos por WhatsApp",
               startsAt: promo.starts_at,
               endsAt: promo.ends_at,
               active: Boolean(promo.active),

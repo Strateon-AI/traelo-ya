@@ -30,13 +30,13 @@ export function Hero({
           </span>
 
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-navy-900 sm:text-5xl lg:text-6xl">
-            Lo que quieres,
+            Lo que querés,
             <br />
             <span className="text-brand-red-600">más cerca</span>
           </h1>
 
           <p className="mt-5 max-w-lg text-base leading-relaxed text-navy-800/80 sm:text-lg">
-            Compras en Estados Unidos y te lo entregamos en Bolivia en 7 a 10 días
+            Comprás en Estados Unidos y te lo entregamos en Bolivia en 7 a 10 días
             hábiles. Fácil, seguro y al mejor precio.
           </p>
 
@@ -56,7 +56,7 @@ export function Hero({
               href="#cotizador"
               className="focus-ring inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-whatsapp-600 px-7 py-4 text-base font-semibold text-white shadow-card transition-colors hover:bg-whatsapp-700 sm:w-auto"
             >
-              Cotiza ahora
+              Cotizá ahora
               <ArrowRight className="h-5 w-5" />
             </a>
           </div>

@@ -58,7 +58,7 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
             </span>
             <p className="mt-3 text-sm font-bold text-navy-900">¿Otro producto?</p>
             <p className="mt-1 text-xs leading-snug text-navy-600">
-              Usa nuestro cotizador o envíanos el link de la tienda y te damos el precio al
+              Usá nuestro cotizador o envianos el link de la tienda y te damos el precio al
               instante.
             </p>
             <a

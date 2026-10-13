@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Tráelo Ya | Compras en Estados Unidos, entregas en Bolivia",
   description:
-    "Compra en tiendas de Estados Unidos y recibe tu pedido en Bolivia en 7 a 10 días hábiles. Cotiza por producto o por peso, con atención personalizada.",
+    "Comprá en tiendas de Estados Unidos y recibí tu pedido en Bolivia en 7 a 10 días hábiles. Cotizá por producto o por peso, con atención personalizada.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

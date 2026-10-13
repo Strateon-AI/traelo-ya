@@ -7,7 +7,7 @@ const FAQS = [
   {
     question: "¿Cuánto tarda el envío desde Estados Unidos?",
     answer:
-      "Entre 7 y 10 días hábiles desde que el producto llega a nuestro almacén en Estados Unidos hasta que lo recibes en Bolivia.",
+      "Entre 7 y 10 días hábiles desde que el producto llega a nuestro almacén en Estados Unidos hasta que lo recibís en Bolivia.",
   },
   {
     question: "¿Qué pasa si el paquete pesa más de lo cotizado?",
