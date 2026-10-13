@@ -388,12 +388,13 @@ function ProductLineFields({
       </div>
 
       <div className="mt-2.5 space-y-3">
-        {/* Mismo comportamiento que antes de moverlo: con tarifa fija el peso no
-            se usa, así que el bloque se oculta. Lo que ya completó (nombre y
-            precio) queda en la línea aunque el bloque desaparezca. */}
-        {!isFlatRate && (
-          <div>
+        {/* Siempre visible, así la pantalla no salta al elegir la categoría. Con
+            tarifa fija el bloque queda solo en captura y completa nombre y
+            precio, sin tocar el peso: si la línea vuelve a "Otro", el peso que
+            tenía sigue ahí (el cálculo lo ignora mientras haya tarifa fija). */}
+        <div>
             <LinkWeightEstimator
+              flatRate={isFlatRate}
               productName={line.productName}
               onWeight={(kg) => onChange({ unitWeightKg: kg })}
               onProductInfo={(info) =>
@@ -404,8 +405,7 @@ function ProductLineFields({
               }
             />
             <p className="mt-1.5 text-xs text-navy-500">O completá los datos a mano.</p>
-          </div>
-        )}
+        </div>
 
         <Field label="¿Qué producto querés traer?">
           <input

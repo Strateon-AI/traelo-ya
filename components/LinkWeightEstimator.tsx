@@ -28,6 +28,10 @@ import { ALLOWED_STORES_LABEL, isAllowedProductHost, isShortLink } from "@/lib/p
  * lee nombre y precio (que se cargan en la línea vía `onProductInfo`) y el
  * peso se estima por categoría. La imagen se comprime en el navegador antes
  * de mandarla, para no chocar con el límite de tamaño de Vercel.
+ *
+ * Con una categoría de tarifa fija (`flatRate`) el peso no se usa: el bloque
+ * queda visible (así la pantalla no salta al elegir la categoría), pero solo
+ * ofrece la captura y solo completa nombre y precio — nunca toca el peso.
  */
 type LinkCheck = "ok" | "tienda_no_soportada" | "no_es_link";
 
@@ -54,16 +58,27 @@ export function LinkWeightEstimator({
   onWeight,
   onProductInfo,
   productName,
+  flatRate = false,
 }: {
   onWeight: (kg: number) => void;
   onProductInfo?: (info: { productName?: string; unitPrice?: number }) => void;
   productName: string;
+  /** La línea tiene categoría con tarifa fija: solo captura, solo nombre y precio. */
+  flatRate?: boolean;
 }) {
   // La captura es la opción principal: sirve para cualquier tienda, el link
   // solo para las de la lista blanca.
   const [mode, setMode] = useState<"link" | "captura">("captura");
   const [linkCheck, setLinkCheck] = useState<LinkCheck>("ok");
   const [screenshot, setScreenshot] = useState<ScreenshotEstimate | null>(null);
+  // Si esa captura se usó para el peso. Una leída con tarifa fija completó
+  // solo nombre y precio: si después la línea vuelve a "Otro", el peso de esa
+  // lectura no está cargado en el campo y no hay que mostrarlo como si lo
+  // estuviera.
+  const [screenshotSetWeight, setScreenshotSetWeight] = useState(false);
+  // Con tarifa fija se muestra siempre la captura; el modo elegido se
+  // conserva para cuando la línea vuelva a "Otro".
+  const activeMode = flatRate ? "captura" : mode;
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [estimate, setEstimate] = useState<WeightEstimate | null>(null);
@@ -160,6 +175,7 @@ export function LinkWeightEstimator({
 
   async function handleScreenshot(file: File | undefined) {
     if (!file || loading) return;
+    const useWeight = !flatRate;
 
     setLoading(true);
     setError(null);
@@ -178,16 +194,23 @@ export function LinkWeightEstimator({
         | { estimate?: ScreenshotEstimate; error?: string }
         | null;
 
-      if (!res.ok || !data?.estimate?.pesoCobrableKg) {
+      const leido = data?.estimate;
+      const sirve = leido
+        ? useWeight
+          ? Boolean(leido.pesoCobrableKg)
+          : Boolean(leido.producto || leido.precioUsd !== null)
+        : false;
+      if (!res.ok || !leido || !sirve) {
         setError(data?.error ?? "No pudimos leer esa captura.");
         return;
       }
 
-      setScreenshot(data.estimate);
-      onWeight(data.estimate.pesoCobrableKg.max);
+      setScreenshot(leido);
+      setScreenshotSetWeight(useWeight);
+      if (useWeight && leido.pesoCobrableKg) onWeight(leido.pesoCobrableKg.max);
       onProductInfo?.({
-        productName: data.estimate.producto ?? undefined,
-        unitPrice: data.estimate.precioUsd ?? undefined,
+        productName: leido.producto ?? undefined,
+        unitPrice: leido.precioUsd ?? undefined,
       });
     } catch {
       setError("No pudimos procesar esa imagen. Probá con otra captura.");
@@ -208,9 +231,10 @@ export function LinkWeightEstimator({
     <div className="rounded-2xl border border-brand-blue-500/25 bg-brand-blue-100/30 p-3.5">
       <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-navy-800">
         <Sparkles className="h-4 w-4 text-brand-blue-600" />
-        ¿Querés que calculemos el peso por vos?
+        {flatRate ? "¿Querés que completemos los datos por vos?" : "¿Querés que calculemos el peso por vos?"}
       </span>
 
+      {!flatRate && (
       <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-white p-1">
         {(
           [
@@ -244,13 +268,17 @@ export function LinkWeightEstimator({
           </button>
         ))}
       </div>
+      )}
 
       <p className="mb-1 text-xs leading-relaxed text-navy-600">
-        {mode === "link"
+        {flatRate
+          ? "Subí una captura de la página del producto y te completamos el nombre y el precio. El envío de esta categoría tiene tarifa fija."
+          : activeMode === "link"
           ? `Pegá el link y calculamos el peso solos. Por ahora solo leemos links de ${ALLOWED_STORES_LABEL}. Si es de otra tienda, usá la captura.`
           : "Sacale una captura a la página del producto (desde tu cel o compu) y la subís acá. Leemos el nombre y el precio, y estimamos el peso. Sirve para cualquier tienda."}
       </p>
 
+      {!flatRate && (
       <button
         type="button"
         onClick={() => setShowVolumetricInfo((prev) => !prev)}
@@ -259,7 +287,8 @@ export function LinkWeightEstimator({
         <Info className="h-3.5 w-3.5" />
         ¿Qué es el peso volumétrico?
       </button>
-      {showVolumetricInfo && (
+      )}
+      {!flatRate && showVolumetricInfo && (
         <p className="mb-2.5 rounded-lg bg-white p-2.5 text-xs leading-relaxed text-navy-600">
           Algunas cajas ocupan mucho espacio aunque pesen poco. Por eso el transporte
           internacional se calcula con el que sea mayor entre el peso real y el peso
@@ -268,7 +297,7 @@ export function LinkWeightEstimator({
         </p>
       )}
 
-      {mode === "captura" && (
+      {activeMode === "captura" && (
         <label className="focus-ring flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-brand-blue-500/40 bg-white px-4 py-3 text-sm font-semibold text-brand-blue-600 hover:bg-brand-blue-100/40">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
           {loading ? "Leyendo la captura…" : "Elegir captura"}
@@ -284,11 +313,11 @@ export function LinkWeightEstimator({
           />
         </label>
       )}
-      {mode === "captura" && (
+      {activeMode === "captura" && (
         <p className="mt-1.5 text-xs text-navy-500">Tiene que verse el precio en la captura.</p>
       )}
 
-      {mode === "link" && (
+      {activeMode === "link" && (
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400" />
@@ -323,7 +352,7 @@ export function LinkWeightEstimator({
       </div>
       )}
 
-      {mode === "link" && linkCheck === "tienda_no_soportada" && (
+      {activeMode === "link" && linkCheck === "tienda_no_soportada" && (
         <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
           <p className="text-xs leading-relaxed text-amber-900">
             Esa tienda no la podemos leer por link. Subí una captura de la página y lo calculamos
@@ -339,20 +368,20 @@ export function LinkWeightEstimator({
           </button>
         </div>
       )}
-      {mode === "link" && linkCheck === "no_es_link" && (
+      {activeMode === "link" && linkCheck === "no_es_link" && (
         <p className="mt-2 text-xs text-navy-600">
           Eso no parece un link. Copiá la dirección completa de la página del producto (empieza
           con https://).
         </p>
       )}
 
-      {loading && mode === "link" && (
+      {loading && activeMode === "link" && (
         <p className="mt-2 text-xs text-navy-500">
           Esto puede tardar unos segundos — estamos leyendo la página del producto.
         </p>
       )}
 
-      {needsDetail && !loading && (
+      {!flatRate && needsDetail && !loading && (
         <div className="mt-3 rounded-xl bg-white p-3">
           <p className="text-sm font-medium text-navy-800">
             No pudimos acceder a esa página automáticamente.
@@ -389,7 +418,7 @@ export function LinkWeightEstimator({
         </div>
       )}
 
-      {estimate?.pesoCobrableKg && (
+      {!flatRate && estimate?.pesoCobrableKg && (
         <div className="mt-3 rounded-xl bg-white p-3">
           {estimate.producto && (
             <p className="text-sm font-semibold text-navy-900">{estimate.producto}</p>
@@ -427,7 +456,7 @@ export function LinkWeightEstimator({
         </div>
       )}
 
-      {screenshot?.pesoCobrableKg && (
+      {screenshot && (
         <div className="mt-3 rounded-xl bg-white p-3">
           {screenshot.producto && (
             <p className="text-sm font-semibold text-navy-900">{screenshot.producto}</p>
@@ -438,15 +467,20 @@ export function LinkWeightEstimator({
               <span className="font-bold text-navy-900">US$ {screenshot.precioUsd.toFixed(2)}</span>
             </p>
           )}
-          <p className="mt-0.5 text-sm text-navy-700">
-            Peso de envío estimado:{" "}
-            <span className="font-bold text-navy-900">
-              {screenshot.pesoCobrableKg.min} a {screenshot.pesoCobrableKg.max} kg
-            </span>
-          </p>
+          {!flatRate && screenshotSetWeight && screenshot.pesoCobrableKg && (
+            <p className="mt-0.5 text-sm text-navy-700">
+              Peso de envío estimado:{" "}
+              <span className="font-bold text-navy-900">
+                {screenshot.pesoCobrableKg.min} a {screenshot.pesoCobrableKg.max} kg
+              </span>
+            </p>
+          )}
           <p className="mt-1 text-xs text-navy-500">
-            Es un aproximado por tipo de producto — una captura no muestra las medidas de la caja.
-            Revisá el nombre y el precio abajo, y ajustalos si hace falta.
+            {flatRate
+              ? "Revisá el nombre y el precio abajo, y ajustalos si hace falta."
+              : screenshotSetWeight
+                ? "Es un aproximado por tipo de producto — una captura no muestra las medidas de la caja. Revisá el nombre y el precio abajo, y ajustalos si hace falta."
+                : "Para estimar el peso, volvé a subir la captura (la anterior completó solo nombre y precio)."}
           </p>
         </div>
       )}
