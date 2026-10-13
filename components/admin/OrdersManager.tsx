@@ -20,6 +20,7 @@ export interface AdminOrder {
   lines: AdminOrderLine[];
   totalWeightKg: number;
   shippingCost: number;
+  flatRateCost: number;
   commissionCost: number;
   total: number;
   status: OrderStatus;
@@ -33,6 +34,22 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 const STATUS_OPTIONS: OrderStatus[] = ["pending", "contacted", "completed"];
+
+/**
+ * Precio del producto según las líneas del pedido, pero solo si el total lo
+ * incluye. Los pedidos anteriores al 07/10 guardaron un total que era solo
+ * el servicio (envío + tarifa fija + comisión): en esos, mostrar "Producto"
+ * haría que el desglose no sume el total. Se detecta comparando el total con
+ * la suma de los cargos, con un centavo de margen por redondeo.
+ */
+function productsShownInTotal(order: AdminOrder): number {
+  const cargos = order.shippingCost + order.flatRateCost + order.commissionCost;
+  if (order.total <= cargos + 0.01) return 0;
+  return order.lines.reduce(
+    (sum, line) => sum + Math.max(0, Number(line.quantity) || 0) * Math.max(0, Number(line.unitPrice) || 0),
+    0
+  );
+}
 
 function whatsappHref(phone: string, customerName: string): string {
   const digits = phone.replace(/[^0-9]/g, "");
@@ -173,6 +190,8 @@ function OrderCard({
   saving: boolean;
   onStatusChange: (status: OrderStatus) => void;
 }) {
+  const productos = productsShownInTotal(order);
+
   return (
     <div className="rounded-2xl border border-surface-200 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -215,11 +234,11 @@ function OrderCard({
       )}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-navy-600">
-        <span>Peso: {order.totalWeightKg} kg</span>
-        <span>Envío: US$ {order.shippingCost.toFixed(2)}</span>
-        {order.commissionCost > 0 && (
-          <span>Comisión: US$ {order.commissionCost.toFixed(2)}</span>
-        )}
+        {order.totalWeightKg > 0 && <span>Peso: {order.totalWeightKg} kg</span>}
+        {productos > 0 && <span>Producto: US$ {productos.toFixed(2)}</span>}
+        {order.shippingCost > 0 && <span>Envío por peso: US$ {order.shippingCost.toFixed(2)}</span>}
+        {order.flatRateCost > 0 && <span>Tarifa fija: US$ {order.flatRateCost.toFixed(2)}</span>}
+        {order.commissionCost > 0 && <span>Comisión: US$ {order.commissionCost.toFixed(2)}</span>}
         <span className="font-bold text-navy-900">Total: US$ {order.total.toFixed(2)}</span>
       </div>
 

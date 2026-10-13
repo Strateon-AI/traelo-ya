@@ -89,6 +89,7 @@ export default async function AdminPage() {
         lines: Array.isArray(o.lines) ? o.lines : [],
         totalWeightKg: Number(o.total_weight_kg) || 0,
         shippingCost: Number(o.shipping_cost) || 0,
+        flatRateCost: Number(o.flat_rate_cost) || 0,
         commissionCost: Number(o.commission_cost) || 0,
         total: Number(o.total) || 0,
         status: o.status ?? "pending",
